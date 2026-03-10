@@ -1,6 +1,6 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { supabase } from "@/lib/supabase";
+import { createAdminClient } from "@/lib/supabase";
 
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
@@ -39,7 +39,7 @@ export async function POST(req: Request) {
     const { id, email_addresses, first_name, last_name, image_url } = evt.data;
     const email = email_addresses?.[0]?.email_address ?? null;
 
-    const { error } = await supabase.from("users").insert({
+    const { error } = await createAdminClient().from("users").insert({
       clerk_id: id,
       email,
       first_name: first_name ?? null,
