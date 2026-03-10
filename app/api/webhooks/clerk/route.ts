@@ -1,6 +1,5 @@
 import { Webhook } from "svix";
 import { headers } from "next/headers";
-import { WebhookEvent } from "@clerk/nextjs/server";
 import { supabase } from "@/lib/supabase";
 
 export async function POST(req: Request) {
@@ -22,14 +21,16 @@ export async function POST(req: Request) {
   const body = JSON.stringify(payload);
 
   const wh = new Webhook(WEBHOOK_SECRET);
-  let evt: WebhookEvent;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let evt: any;
 
   try {
     evt = wh.verify(body, {
       "svix-id": svix_id,
       "svix-timestamp": svix_timestamp,
       "svix-signature": svix_signature,
-    }) as WebhookEvent;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    }) as any;
   } catch {
     return new Response("Invalid webhook signature", { status: 400 });
   }
