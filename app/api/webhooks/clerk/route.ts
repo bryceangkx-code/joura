@@ -5,7 +5,13 @@ import { createAdminClient } from "@/lib/supabase";
 export async function POST(req: Request) {
   const WEBHOOK_SECRET = process.env.CLERK_WEBHOOK_SECRET;
   if (!WEBHOOK_SECRET) {
+    console.error("CLERK_WEBHOOK_SECRET is not set");
     return new Response("Missing CLERK_WEBHOOK_SECRET", { status: 500 });
+  }
+
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error("SUPABASE_SERVICE_ROLE_KEY is not set");
+    return new Response("Missing SUPABASE_SERVICE_ROLE_KEY", { status: 500 });
   }
 
   const headerPayload = await headers();
