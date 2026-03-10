@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UserButton, useUser } from "@clerk/nextjs";
 
 const navItems = [
   { href: "/", label: "Home" },
@@ -12,6 +13,7 @@ const navItems = [
 
 export default function Nav() {
   const pathname = usePathname();
+  const { isSignedIn } = useUser();
 
   return (
     <nav className="nav">
@@ -30,12 +32,18 @@ export default function Nav() {
         ))}
       </div>
       <div className="nav-actions">
-        <Link href="/dashboard" className="btn btn-ghost">
-          Log in
-        </Link>
-        <Link href="/pricing" className="btn btn-primary">
-          Get Started
-        </Link>
+        {isSignedIn ? (
+          <UserButton />
+        ) : (
+          <>
+            <Link href="/sign-in" className="btn btn-ghost">
+              Log in
+            </Link>
+            <Link href="/sign-up" className="btn btn-primary">
+              Get Started
+            </Link>
+          </>
+        )}
       </div>
     </nav>
   );
