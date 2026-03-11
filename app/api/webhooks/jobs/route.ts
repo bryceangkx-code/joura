@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase";
+import { scoreJob } from "@/lib/scoreJob";
 import { NextResponse } from "next/server";
 
 export async function POST(req: Request) {
@@ -20,20 +21,10 @@ export async function POST(req: Request) {
   // Accept a single job or an array
   const jobs = Array.isArray(body) ? body : [body];
 
-  const rows = jobs.map((job: Record<string, unknown>) => ({
-    user_id: job.user_id,
-    title: job.title,
-    company: job.company,
-    location: job.location ?? "Remote",
-    job_type: job.job_type ?? "Full-time",
-    fit_score: typeof job.fit_score === "number" ? job.fit_score : 0,
-    status: "new",
-    posted_date: job.posted_date ?? new Date().toISOString().split("T")[0],
-  }));
-
-  // Validate required fields
-  for (const row of rows) {
-    if (!row.user_id || !row.title || !row.company) {
+  // Validate required fields up front
+  for (const job of jobs) {
+    const j = job as Record<string, unknown>;
+    if (!j.user_id || !j.title || !j.company) {
       return NextResponse.json(
         { error: "Each job requires user_id, title, and company" },
         { status: 400 }
@@ -41,10 +32,33 @@ export async function POST(req: Request) {
     }
   }
 
+  // Score and build rows in parallel
+  const rows = await Promise.all(
+    jobs.map(async (job: Record<string, unknown>) => {
+      const title = String(job.title ?? "").replace(/^=+/, "").trim();
+      const company = String(job.company ?? "").replace(/^=+/, "").trim();
+      const jobType = String(job.job_type ?? "Full-time").replace(/^=+/, "").trim();
+      const description = job.description ? String(job.description) : undefined;
+
+      const fit_score = await scoreJob(title, company, jobType, description);
+
+      return {
+        user_id: job.user_id,
+        title,
+        company,
+        location: String(job.location ?? "Remote").replace(/^=+/, "").trim(),
+        job_type: jobType,
+        fit_score,
+        status: "new",
+        posted_date: job.posted_date ?? new Date().toISOString().split("T")[0],
+      };
+    })
+  );
+
   const { error, data } = await createAdminClient()
     .from("jobs")
     .insert(rows)
-    .select("id, title, company");
+    .select("id, title, company, fit_score");
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
