@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Footer from "@/components/Footer";
 
 const faqs = [
@@ -14,8 +14,8 @@ const faqs = [
     a: "Yes, you can cancel your subscription at any time. You'll retain access until the end of your billing period.",
   },
   {
-    q: "How does auto-apply work?",
-    a: "Premium users can enable auto-apply for jobs above a fit score threshold. Joura submits tailored applications with a customized resume and cover letter on your behalf.",
+    q: "How does AI fit scoring work?",
+    a: "Premium users can trigger an AI-powered fit score on any job using Claude — it analyzes your profile against the job details to give a precise match score.",
   },
   {
     q: "Is my resume data safe?",
@@ -24,8 +24,34 @@ const faqs = [
 ];
 
 export default function PricingPage() {
+  const router = useRouter();
   const [annual, setAnnual] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const [loading, setLoading] = useState<string | null>(null);
+  const [error, setError] = useState("");
+
+  async function handleSubscribe(plan: "basic" | "premium") {
+    setError("");
+    setLoading(plan);
+    const res = await fetch("/api/stripe/checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan }),
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.error ?? "Something went wrong. Please try again.");
+      setLoading(null);
+      return;
+    }
+    const { url } = await res.json();
+    if (url) {
+      window.location.href = url;
+    } else {
+      setError("Could not create checkout session.");
+      setLoading(null);
+    }
+  }
 
   const plans = [
     {
@@ -33,16 +59,16 @@ export default function PricingPage() {
       price: 0,
       desc: "Get started and explore your matches.",
       features: [
-        { text: "Up to 20 job matches/day", included: true },
-        { text: "Basic fit scoring", included: true },
-        { text: "Job bookmarking", included: true },
-        { text: "Resume builder (1 resume)", included: true },
-        { text: "AI resume suggestions", included: false },
-        { text: "Auto-apply", included: false },
-        { text: "Employer reply alerts", included: false },
+        { text: "3 job matches preview", included: true },
+        { text: "Basic profile setup", included: true },
+        { text: "Resume upload (1 resume)", included: true },
+        { text: "Full job feed", included: false },
+        { text: "Fit scoring", included: false },
+        { text: "AI Polish", included: false },
+        { text: "AI fit scoring", included: false },
       ],
       cta: "Get Started",
-      href: "/dashboard",
+      action: "free" as const,
     },
     {
       name: "Basic",
@@ -51,15 +77,15 @@ export default function PricingPage() {
       featured: true,
       features: [
         { text: "Unlimited job matches", included: true },
-        { text: "Advanced AI fit scoring", included: true },
-        { text: "Unlimited bookmarks", included: true },
-        { text: "Resume builder (5 resumes)", included: true },
-        { text: "AI resume suggestions", included: true },
-        { text: "Auto-apply", included: false },
-        { text: "Employer reply alerts", included: false },
+        { text: "Full job feed", included: true },
+        { text: "Keyword fit scoring", included: true },
+        { text: "Resume upload & editor", included: true },
+        { text: "Job bookmarking", included: true },
+        { text: "AI Polish", included: false },
+        { text: "AI fit scoring", included: false },
       ],
-      cta: "Start Free Trial",
-      href: "/dashboard",
+      cta: "Start Basic",
+      action: "basic" as const,
     },
     {
       name: "Premium",
@@ -67,15 +93,15 @@ export default function PricingPage() {
       desc: "Let Joura do the heavy lifting for you.",
       features: [
         { text: "Everything in Basic", included: true },
-        { text: "Auto-apply (up to 50/day)", included: true },
-        { text: "Tailored cover letters", included: true },
+        { text: "AI Polish (ATS + rewrites)", included: true },
+        { text: "AI fit scoring (Claude)", included: true },
+        { text: "Resume rewrite", included: true },
         { text: "Unlimited resumes", included: true },
-        { text: "Employer reply alerts", included: true },
-        { text: "Application analytics", included: true },
         { text: "Priority support", included: true },
+        { text: "Early access to new features", included: true },
       ],
       cta: "Go Premium",
-      href: "/dashboard",
+      action: "premium" as const,
     },
   ];
 
@@ -87,39 +113,36 @@ export default function PricingPage() {
           <h2>Simple, transparent pricing.</h2>
           <p>Start free. Upgrade when you&apos;re ready to accelerate.</p>
           <div className="pricing-toggle">
-            <span className={`toggle-label ${!annual ? "active" : ""}`}>
-              Monthly
-            </span>
-            <div
-              className={`toggle ${annual ? "on" : ""}`}
-              onClick={() => setAnnual(!annual)}
-            >
+            <span className={`toggle-label ${!annual ? "active" : ""}`}>Monthly</span>
+            <div className={`toggle ${annual ? "on" : ""}`} onClick={() => setAnnual(!annual)}>
               <div className="toggle-thumb" />
             </div>
-            <span className={`toggle-label ${annual ? "active" : ""}`}>
-              Annual
-            </span>
+            <span className={`toggle-label ${annual ? "active" : ""}`}>Annual</span>
             {annual && <span className="save-badge">Save 25%</span>}
           </div>
         </div>
 
+        {error && (
+          <div style={{
+            maxWidth: 480, margin: "0 auto 24px", padding: "12px 16px",
+            background: "rgba(224,92,92,0.1)", border: "1px solid rgba(224,92,92,0.3)",
+            borderRadius: 8, fontSize: 13, color: "var(--red)", textAlign: "center",
+          }}>
+            {error}
+          </div>
+        )}
+
         <div className="pricing-grid">
           {plans.map((plan) => (
-            <div
-              key={plan.name}
-              className={`pricing-card ${plan.featured ? "featured" : ""}`}
-            >
-              {plan.featured && (
-                <div className="popular-badge">Most Popular</div>
-              )}
+            <div key={plan.name} className={`pricing-card ${plan.featured ? "featured" : ""}`}>
+              {plan.featured && <div className="popular-badge">Most Popular</div>}
               <div className="plan-name">{plan.name}</div>
               <div className="plan-price">
                 {plan.price === 0 ? (
                   "Free"
                 ) : (
                   <>
-                    ${plan.price}
-                    <span>/mo</span>
+                    ${plan.price}<span>/mo</span>
                   </>
                 )}
               </div>
@@ -127,24 +150,31 @@ export default function PricingPage() {
               <div className="plan-divider" />
               <ul className="plan-features">
                 {plan.features.map((f) => (
-                  <li
-                    key={f.text}
-                    className={`plan-feature ${f.included ? "included" : ""}`}
-                  >
-                    <span className={f.included ? "check" : "cross"}>
-                      {f.included ? "✓" : "–"}
-                    </span>
+                  <li key={f.text} className={`plan-feature ${f.included ? "included" : ""}`}>
+                    <span className={f.included ? "check" : "cross"}>{f.included ? "✓" : "–"}</span>
                     {f.text}
                   </li>
                 ))}
               </ul>
-              <Link
-                href={plan.href}
-                className={`btn btn-lg ${plan.featured ? "btn-primary" : "btn-outline"}`}
-                style={{ width: "100%", display: "block", textAlign: "center" }}
-              >
-                {plan.cta}
-              </Link>
+
+              {plan.action === "free" ? (
+                <button
+                  className="btn btn-lg btn-outline"
+                  style={{ width: "100%" }}
+                  onClick={() => router.push("/dashboard")}
+                >
+                  {plan.cta}
+                </button>
+              ) : (
+                <button
+                  className={`btn btn-lg ${plan.featured ? "btn-primary" : "btn-outline"}`}
+                  style={{ width: "100%" }}
+                  onClick={() => handleSubscribe(plan.action as "basic" | "premium")}
+                  disabled={loading !== null}
+                >
+                  {loading === plan.action ? "Redirecting…" : plan.cta}
+                </button>
+              )}
             </div>
           ))}
         </div>
@@ -153,10 +183,7 @@ export default function PricingPage() {
           <h3>Frequently Asked Questions</h3>
           {faqs.map((faq, i) => (
             <div className="faq-item" key={i}>
-              <div
-                className="faq-q"
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-              >
+              <div className="faq-q" onClick={() => setOpenFaq(openFaq === i ? null : i)}>
                 {faq.q}
                 <span>{openFaq === i ? "−" : "+"}</span>
               </div>

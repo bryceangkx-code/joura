@@ -23,6 +23,7 @@ export async function POST(req: Request) {
   const { job_title, skills, years_experience, preferred_job_types, preferred_locations } =
     await req.json();
 
+  // Only update profile fields — never overwrite plan or stripe fields via this route
   const { error } = await createAdminClient()
     .from("user_profiles")
     .upsert(
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
         preferred_locations,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: "clerk_id" }
+      { onConflict: "clerk_id", ignoreDuplicates: false }
     );
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

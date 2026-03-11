@@ -11,7 +11,7 @@ create table if not exists resumes (
   created_at timestamptz not null default now()
 );
 
--- User profiles table (per-user job preferences & skills)
+-- User profiles table (per-user job preferences, skills & billing plan)
 create table if not exists user_profiles (
   clerk_id text primary key,
   job_title text,
@@ -19,8 +19,17 @@ create table if not exists user_profiles (
   years_experience integer,
   preferred_job_types text[] default '{}',
   preferred_locations text[] default '{}',
+  plan text not null default 'free',            -- free | basic | premium
+  stripe_customer_id text,
+  stripe_subscription_id text,
   updated_at timestamptz not null default now()
 );
+
+-- Migration: add Stripe/plan columns to existing user_profiles table
+-- Run this if the table already exists:
+alter table user_profiles add column if not exists plan text not null default 'free';
+alter table user_profiles add column if not exists stripe_customer_id text;
+alter table user_profiles add column if not exists stripe_subscription_id text;
 
 -- Jobs table (already exists — shown here for reference)
 -- create table if not exists jobs (

@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useUser } from "@clerk/nextjs";
 
+type Plan = "free" | "basic" | "premium";
+
 type Resume = {
   id: string;
   file_name: string;
@@ -50,6 +52,7 @@ function scoreColor(score: number) {
 
 export default function ResumePage() {
   const { user, isLoaded } = useUser();
+  const [plan, setPlan] = useState<Plan>("free");
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [active, setActive] = useState<Resume | null>(null);
   const [loading, setLoading] = useState(true);
@@ -80,11 +83,18 @@ export default function ResumePage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadResumes = useCallback(async () => {
-    const res = await fetch("/api/resume");
-    if (res.ok) {
-      const data: Resume[] = await res.json();
+    const [resumeRes, profileRes] = await Promise.all([
+      fetch("/api/resume"),
+      fetch("/api/profile"),
+    ]);
+    if (resumeRes.ok) {
+      const data: Resume[] = await resumeRes.json();
       setResumes(data);
       if (data.length > 0) setActive(data[0]);
+    }
+    if (profileRes.ok) {
+      const profile = await profileRes.json();
+      setPlan(profile?.plan ?? "free");
     }
     setLoading(false);
   }, []);
@@ -627,36 +637,44 @@ export default function ResumePage() {
         {/* Polish results — with premium lock overlay */}
         {rightView === "polished" && polishResult && (
           <div style={{ flex: 1, overflowY: "auto", padding: "40px", position: "relative" }}>
-            <div style={{ maxWidth: 600, margin: "0 auto", filter: "blur(5px)", userSelect: "none", pointerEvents: "none" }}>
+            {/* Results — blurred for non-premium, visible for premium */}
+            <div style={{
+              maxWidth: 600, margin: "0 auto",
+              ...(plan !== "premium" ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : {}),
+            }}>
               <PolishResults result={polishResult} />
             </div>
-            <div style={{
-              position: "absolute", inset: 0,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "linear-gradient(to bottom, rgba(10,10,11,0.2) 0%, rgba(10,10,11,0.85) 40%)",
-            }}>
+
+            {/* Lock overlay — only shown to non-premium users */}
+            {plan !== "premium" && (
               <div style={{
-                background: "var(--bg2)", border: "1px solid rgba(201,168,76,0.3)",
-                borderRadius: 16, padding: "36px 40px", textAlign: "center", maxWidth: 340,
-                boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+                position: "absolute", inset: 0,
+                display: "flex", alignItems: "center", justifyContent: "center",
+                background: "linear-gradient(to bottom, rgba(10,10,11,0.2) 0%, rgba(10,10,11,0.85) 40%)",
               }}>
-                <div style={{ fontSize: 36, marginBottom: 16 }}>🔒</div>
-                <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-outfit)", marginBottom: 8 }}>
-                  Premium Feature
+                <div style={{
+                  background: "var(--bg2)", border: "1px solid rgba(201,168,76,0.3)",
+                  borderRadius: 16, padding: "36px 40px", textAlign: "center", maxWidth: 340,
+                  boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
+                }}>
+                  <div style={{ fontSize: 36, marginBottom: 16 }}>🔒</div>
+                  <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-outfit)", marginBottom: 8 }}>
+                    Premium Feature
+                  </div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24, lineHeight: 1.6 }}>
+                    Unlock your ATS score, missing keywords, and tailored bullet rewrites to land more interviews.
+                  </div>
+                  <Link href="/pricing" className="btn btn-primary"
+                    style={{ display: "block", padding: "12px", marginBottom: 12, textDecoration: "none", textAlign: "center" }}>
+                    ⚡ Upgrade to Premium
+                  </Link>
+                  <button className="btn btn-ghost" style={{ width: "100%", fontSize: 13 }}
+                    onClick={() => setRightView("preview")}>
+                    Maybe later
+                  </button>
                 </div>
-                <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 24, lineHeight: 1.6 }}>
-                  Unlock your ATS score, missing keywords, and tailored bullet rewrites to land more interviews.
-                </div>
-                <Link href="/pricing" className="btn btn-primary"
-                  style={{ display: "block", padding: "12px", marginBottom: 12, textDecoration: "none", textAlign: "center" }}>
-                  ⚡ Upgrade to Premium
-                </Link>
-                <button className="btn btn-ghost" style={{ width: "100%", fontSize: 13 }}
-                  onClick={() => setRightView("preview")}>
-                  Maybe later
-                </button>
               </div>
-            </div>
+            )}
           </div>
         )}
 
