@@ -1,26 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useUser } from "@clerk/nextjs";
 
-const mockJobs = [
-  { id: 1, title: "Senior Product Designer", company: "Stripe", location: "Remote", fit: 92, type: "Full-time", status: "new", posted: "2d ago" },
-  { id: 2, title: "UX Designer", company: "Linear", location: "San Francisco", fit: 85, type: "Full-time", status: "saved", posted: "3d ago" },
-  { id: 3, title: "Product Designer", company: "Vercel", location: "Remote", fit: 78, type: "Full-time", status: "applied", posted: "5d ago" },
-  { id: 4, title: "Design Systems Lead", company: "GitHub", location: "Remote", fit: 71, type: "Full-time", status: "new", posted: "1d ago" },
-  { id: 5, title: "UX Researcher", company: "Figma", location: "New York", fit: 64, type: "Contract", status: "saved", posted: "1w ago" },
-  { id: 6, title: "Visual Designer", company: "Notion", location: "Remote", fit: 55, type: "Full-time", status: "new", posted: "2d ago" },
-];
+type Job = {
+  id: string;
+  title: string;
+  company: string;
+  location: string;
+  fit_score: number;
+  job_type: string;
+  status: "new" | "saved" | "applied";
+  posted_date: string;
+};
 
-const statCards = [
-  { label: "New Matches", value: "24", delta: "↑ 8 from yesterday" },
-  { label: "Avg Fit Score", value: "79%", delta: "↑ 3% this week" },
-  { label: "Applied", value: "12", delta: "3 awaiting reply" },
-  { label: "Saved", value: "31", delta: "7 deadlines soon" },
-];
+type Stats = {
+  jobsToday: number;
+  avgFit: number;
+  appliedCount: number;
+  savedCount: number;
+};
 
 const sidebarNav = [
-  { icon: "⚡", label: "Job Feed", active: true, badge: "24" },
+  { icon: "⚡", label: "Job Feed", active: true },
   { icon: "📌", label: "Saved Jobs" },
   { icon: "📤", label: "Applications" },
   { icon: "📊", label: "Analytics" },
@@ -42,16 +45,80 @@ function statusClass(s: string) {
   return s === "new" ? "status-new" : s === "applied" ? "status-applied" : "status-saved";
 }
 
+function timeAgo(dateStr: string) {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days === 0) return "today";
+  if (days === 1) return "1d ago";
+  if (days < 7) return `${days}d ago`;
+  return `${Math.floor(days / 7)}w ago`;
+}
+
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState("all");
+  const { user } = useUser();
+  const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied">("all");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [stats, setStats] = useState<Stats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const firstName = user?.firstName ?? user?.username ?? "there";
+
+  const loadData = useCallback(async () => {
+    const [jobsRes, statsRes] = await Promise.all([
+      fetch("/api/jobs"),
+      fetch("/api/dashboard/stats"),
+    ]);
+    if (jobsRes.ok) setJobs(await jobsRes.json());
+    if (statsRes.ok) setStats(await statsRes.json());
+    setLoading(false);
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  async function handleSave(jobId: string) {
+    setActionLoading(jobId);
+    const res = await fetch(`/api/jobs/${jobId}/save`, { method: "POST" });
+    if (res.ok) {
+      const { status } = await res.json();
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
+      const statsRes = await fetch("/api/dashboard/stats");
+      if (statsRes.ok) setStats(await statsRes.json());
+    }
+    setActionLoading(null);
+  }
+
+  async function handleApply(jobId: string) {
+    setActionLoading(jobId);
+    const res = await fetch(`/api/jobs/${jobId}/apply`, { method: "POST" });
+    if (res.ok) {
+      const { status } = await res.json();
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, status } : j)));
+      const statsRes = await fetch("/api/dashboard/stats");
+      if (statsRes.ok) setStats(await statsRes.json());
+    }
+    setActionLoading(null);
+  }
 
   const filtered =
-    activeTab === "all"
-      ? mockJobs
-      : activeTab === "saved"
-      ? mockJobs.filter((j) => j.status === "saved")
-      : mockJobs.filter((j) => j.status === "applied");
+    activeTab === "all" ? jobs : jobs.filter((j) => j.status === activeTab);
+
+  const statCards = stats
+    ? [
+        { label: "New Matches", value: String(stats.jobsToday), delta: "jobs added today" },
+        { label: "Avg Fit Score", value: `${stats.avgFit}%`, delta: "across all listings" },
+        { label: "Applied", value: String(stats.appliedCount), delta: "total applications" },
+        { label: "Saved", value: String(stats.savedCount), delta: "jobs bookmarked" },
+      ]
+    : [
+        { label: "New Matches", value: "—", delta: "" },
+        { label: "Avg Fit Score", value: "—", delta: "" },
+        { label: "Applied", value: "—", delta: "" },
+        { label: "Saved", value: "—", delta: "" },
+      ];
 
   return (
     <div className="dashboard">
@@ -65,9 +132,6 @@ export default function DashboardPage() {
             >
               <span className="icon">{item.icon}</span>
               {item.label}
-              {item.badge && (
-                <span className="sidebar-badge">{item.badge}</span>
-              )}
             </button>
           ))}
         </div>
@@ -96,13 +160,11 @@ export default function DashboardPage() {
               padding: "14px",
             }}
           >
-            <div
-              style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", marginBottom: 6 }}
-            >
+            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--gold)", marginBottom: 6 }}>
               ⚡ Upgrade to Premium
             </div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 12 }}>
-              Auto-apply & employer alerts
+              Auto-apply &amp; employer alerts
             </div>
             <Link
               href="/pricing"
@@ -118,9 +180,9 @@ export default function DashboardPage() {
       <div className="main-content">
         <div className="page-header">
           <div>
-            <div className="page-title">Job Feed</div>
+            <div className="page-title">Welcome back, {firstName}</div>
             <div className="page-sub">
-              Updated 2 minutes ago · 247 new matches today
+              {loading ? "Loading your job feed…" : `${jobs.length} jobs in your feed`}
             </div>
           </div>
           <div style={{ display: "flex", gap: 10 }}>
@@ -160,10 +222,7 @@ export default function DashboardPage() {
         <div className="search-bar">
           <span style={{ color: "var(--muted)" }}>🔍</span>
           <input placeholder="Search job title, company, or skill..." />
-          <button
-            className="btn btn-ghost"
-            style={{ whiteSpace: "nowrap", fontSize: 13 }}
-          >
+          <button className="btn btn-ghost" style={{ whiteSpace: "nowrap", fontSize: 13 }}>
             Filters ▾
           </button>
         </div>
@@ -180,39 +239,69 @@ export default function DashboardPage() {
           ))}
         </div>
 
-        <div className="jobs-table">
-          <div className="table-head">
-            <div className="th">Position</div>
-            <div className="th">Company</div>
-            <div className="th">Type</div>
-            <div className="th">Fit Score</div>
-            <div className="th">Status</div>
+        {loading ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>
+            Loading jobs…
           </div>
-          {filtered.map((job) => (
-            <div className="table-row" key={job.id}>
-              <div className="td">
-                <div className="td-title">{job.title}</div>
-                <div className="td-sub">
-                  {job.location} · {job.posted}
+        ) : filtered.length === 0 ? (
+          <div style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>
+            No jobs found.
+          </div>
+        ) : (
+          <div className="jobs-table">
+            <div className="table-head">
+              <div className="th">Position</div>
+              <div className="th">Company</div>
+              <div className="th">Type</div>
+              <div className="th">Fit Score</div>
+              <div className="th">Status</div>
+              <div className="th">Actions</div>
+            </div>
+            {filtered.map((job) => (
+              <div className="table-row" key={job.id}>
+                <div className="td">
+                  <div className="td-title">{job.title}</div>
+                  <div className="td-sub">
+                    {job.location} · {timeAgo(job.posted_date)}
+                  </div>
+                </div>
+                <div className="td">{job.company}</div>
+                <div className="td">
+                  <span style={{ fontSize: 13 }}>{job.job_type}</span>
+                </div>
+                <div className="td">
+                  <span className={`fit-badge ${fitClass(job.fit_score)}`}>
+                    {job.fit_score}%
+                  </span>
+                </div>
+                <div className="td">
+                  <span className={`status-pill ${statusClass(job.status)}`}>
+                    {job.status}
+                  </span>
+                </div>
+                <div className="td" style={{ display: "flex", gap: 6 }}>
+                  <button
+                    className="btn btn-ghost"
+                    style={{ fontSize: 12, padding: "4px 10px" }}
+                    disabled={actionLoading === job.id || job.status === "applied"}
+                    onClick={() => handleSave(job.id)}
+                    title={job.status === "saved" ? "Unsave" : "Save"}
+                  >
+                    {job.status === "saved" ? "★ Saved" : "☆ Save"}
+                  </button>
+                  <button
+                    className={`btn ${job.status === "applied" ? "btn-outline" : "btn-primary"}`}
+                    style={{ fontSize: 12, padding: "4px 10px" }}
+                    disabled={actionLoading === job.id || job.status === "applied"}
+                    onClick={() => handleApply(job.id)}
+                  >
+                    {job.status === "applied" ? "✓ Applied" : "Apply"}
+                  </button>
                 </div>
               </div>
-              <div className="td">{job.company}</div>
-              <div className="td">
-                <span style={{ fontSize: 13 }}>{job.type}</span>
-              </div>
-              <div className="td">
-                <span className={`fit-badge ${fitClass(job.fit)}`}>
-                  {job.fit}%
-                </span>
-              </div>
-              <div className="td">
-                <span className={`status-pill ${statusClass(job.status)}`}>
-                  {job.status}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
