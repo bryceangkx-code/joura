@@ -35,42 +35,47 @@ export async function POST(req: Request) {
     }
   }
 
-  // Score and build rows in parallel
-  const rows = await Promise.all(
-    jobs.map(async (job: Record<string, unknown>) => {
-      const title = String(job.title || job.job_title || "").replace(/^=+/, "").trim();
-      const company = String(job.company || job.employer_name || "").replace(/^=+/, "").trim();
-      const jobType = String(job.job_type || job.job_employment_type || "Full-time").replace(/^=+/, "").trim();
-      const location = String(job.location || job.job_city || "Remote").replace(/^=+/, "").trim();
-      const description = job.description || job.job_description
-        ? String(job.description || job.job_description)
-        : undefined;
-      const rawDate = job.posted_date || job.job_posted_at_datetime_utc;
-      const postedDate = rawDate
-        ? String(rawDate).split("T")[0]
-        : new Date().toISOString().split("T")[0];
+  // Score and build rows sequentially with a delay to avoid rate limits
+  const rows = [];
+  for (let i = 0; i < jobs.length; i++) {
+    const job = jobs[i] as Record<string, unknown>;
+    const title = String(job.title || job.job_title || "").replace(/^=+/, "").trim();
+    const company = String(job.company || job.employer_name || "").replace(/^=+/, "").trim();
+    const jobType = String(job.job_type || job.job_employment_type || "Full-time").replace(/^=+/, "").trim();
+    const location = String(job.location || job.job_city || "Remote").replace(/^=+/, "").trim();
+    const description = job.description || job.job_description
+      ? String(job.description || job.job_description)
+      : undefined;
+    const rawDate = job.posted_date || job.job_posted_at_datetime_utc;
+    const postedDate = rawDate
+      ? String(rawDate).split("T")[0]
+      : new Date().toISOString().split("T")[0];
 
-      console.log(`[n8n webhook] scoring: "${title}" at "${company}"`);
-      let fit_score = 0;
-      try {
-        fit_score = await scoreJob(title, company, jobType, description);
-        console.log(`[n8n webhook] score for "${title}": ${fit_score}`);
-      } catch (err) {
-        console.error(`[n8n webhook] scoring failed for "${title}":`, err);
-      }
+    console.log(`[n8n webhook] scoring ${i + 1}/${jobs.length}: "${title}" at "${company}"`);
+    let fit_score = 0;
+    try {
+      fit_score = await scoreJob(title, company, jobType, description);
+      console.log(`[n8n webhook] score for "${title}": ${fit_score}`);
+    } catch (err) {
+      console.error(`[n8n webhook] scoring failed for "${title}":`, err);
+    }
 
-      return {
-        user_id: job.user_id,
-        title,
-        company,
-        location,
-        job_type: jobType,
-        fit_score,
-        status: "new",
-        posted_date: postedDate,
-      };
-    })
-  );
+    rows.push({
+      user_id: job.user_id,
+      title,
+      company,
+      location,
+      job_type: jobType,
+      fit_score,
+      status: "new",
+      posted_date: postedDate,
+    });
+
+    // 500ms delay between scoring calls to avoid rate limits
+    if (i < jobs.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
 
   console.log("[n8n webhook] inserting rows:", JSON.stringify(rows, null, 2));
 
