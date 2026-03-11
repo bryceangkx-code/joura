@@ -45,6 +45,10 @@ function statusClass(s: string) {
   return s === "new" ? "status-new" : s === "applied" ? "status-applied" : "status-saved";
 }
 
+function clean(val: string) {
+  return val?.replace(/^=+/, "").trim() ?? "";
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86400000);
@@ -260,14 +264,14 @@ export default function DashboardPage() {
             {filtered.map((job) => (
               <div className="table-row" key={job.id}>
                 <div className="td">
-                  <div className="td-title">{job.title}</div>
+                  <div className="td-title">{clean(job.title)}</div>
                   <div className="td-sub">
-                    {job.location} · {timeAgo(job.posted_date)}
+                    {clean(job.location)} · {timeAgo(job.posted_date)}
                   </div>
                 </div>
-                <div className="td">{job.company}</div>
+                <div className="td">{clean(job.company)}</div>
                 <div className="td">
-                  <span style={{ fontSize: 13 }}>{job.job_type}</span>
+                  <span style={{ fontSize: 13 }}>{clean(job.job_type)}</span>
                 </div>
                 <div className="td">
                   <span className={`fit-badge ${fitClass(job.fit_score)}`}>
