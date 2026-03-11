@@ -15,6 +15,8 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
+  console.log("[n8n webhook] incoming body:", JSON.stringify(body, null, 2));
+
   // Accept a single job or an array
   const jobs = Array.isArray(body) ? body : [body];
 
