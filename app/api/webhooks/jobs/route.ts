@@ -21,13 +21,15 @@ export async function POST(req: Request) {
   // Accept a single job or an array
   const jobs = Array.isArray(body) ? body : [body];
 
-  // Validate required fields up front (using JSearch field names)
+  // Validate required fields up front (accepts both field name formats)
   for (const job of jobs) {
     const j = job as Record<string, unknown>;
-    if (!j.user_id || !j.job_title || !j.employer_name) {
+    const hasTitle = j.title || j.job_title;
+    const hasCompany = j.company || j.employer_name;
+    if (!j.user_id || !hasTitle || !hasCompany) {
       console.log("[n8n webhook] validation failed for job:", JSON.stringify(j));
       return NextResponse.json(
-        { error: "Each job requires user_id, job_title, and employer_name" },
+        { error: "Each job requires user_id, and either title/job_title and company/employer_name" },
         { status: 400 }
       );
     }
@@ -36,13 +38,16 @@ export async function POST(req: Request) {
   // Score and build rows in parallel
   const rows = await Promise.all(
     jobs.map(async (job: Record<string, unknown>) => {
-      const title = String(job.job_title ?? "").replace(/^=+/, "").trim();
-      const company = String(job.employer_name ?? "").replace(/^=+/, "").trim();
-      const jobType = String(job.job_employment_type ?? "Full-time").replace(/^=+/, "").trim();
-      const location = String(job.job_city ?? "Remote").replace(/^=+/, "").trim();
-      const description = job.job_description ? String(job.job_description) : undefined;
-      const postedDate = job.job_posted_at_datetime_utc
-        ? String(job.job_posted_at_datetime_utc).split("T")[0]
+      const title = String(job.title || job.job_title || "").replace(/^=+/, "").trim();
+      const company = String(job.company || job.employer_name || "").replace(/^=+/, "").trim();
+      const jobType = String(job.job_type || job.job_employment_type || "Full-time").replace(/^=+/, "").trim();
+      const location = String(job.location || job.job_city || "Remote").replace(/^=+/, "").trim();
+      const description = job.description || job.job_description
+        ? String(job.description || job.job_description)
+        : undefined;
+      const rawDate = job.posted_date || job.job_posted_at_datetime_utc;
+      const postedDate = rawDate
+        ? String(rawDate).split("T")[0]
         : new Date().toISOString().split("T")[0];
 
       console.log(`[n8n webhook] scoring: "${title}" at "${company}"`);
