@@ -1,271 +1,267 @@
 "use client";
 
-const experiences = [
-  {
-    title: "Senior Product Designer",
-    company: "Acme Corp",
-    dates: "2021 – Present",
-    desc: "Led end-to-end design of the core product, increasing user engagement by 34%. Managed a team of 3 designers.",
-  },
-  {
-    title: "UX Designer",
-    company: "Startup Co",
-    dates: "2019 – 2021",
-    desc: "Designed mobile-first experiences for fintech app serving 200K users.",
-  },
-];
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useUser } from "@clerk/nextjs";
 
-const skills = [
-  "Figma",
-  "Prototyping",
-  "Design Systems",
-  "User Research",
-  "Framer",
-  "Notion",
-  "A/B Testing",
-  "Stakeholder Mgmt",
-];
+type Resume = {
+  id: string;
+  file_name: string;
+  file_url: string;
+  signed_url: string | null;
+  created_at: string;
+};
 
-const aiSuggestions = [
-  {
-    icon: "💡",
-    text: "Add measurable outcomes to your Acme role — quantified achievements get 2x more responses.",
-  },
-  {
-    icon: "🎯",
-    text: "'Design Systems' is a top skill for Senior roles. Consider expanding this bullet.",
-  },
-];
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "numeric", month: "short", year: "numeric",
+  });
+}
 
-const previewExperiences = [
-  {
-    title: "Senior Product Designer",
-    meta: "Acme Corp · 2021 – Present",
-    desc: "Led end-to-end design of the core product, increasing user engagement by 34%. Managed a team of 3 designers and collaborated closely with engineering.",
-  },
-  {
-    title: "UX Designer",
-    meta: "Startup Co · 2019 – 2021",
-    desc: "Designed mobile-first experiences for a fintech app serving over 200K users. Ran weekly usability tests and shipped 2 major feature redesigns.",
-  },
-];
+export default function ResumePage() {
+  const { user, isLoaded } = useUser();
+  const [resumes, setResumes] = useState<Resume[]>([]);
+  const [active, setActive] = useState<Resume | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-const previewSkills = [
-  "Figma",
-  "Prototyping",
-  "Design Systems",
-  "User Research",
-  "Framer",
-  "A/B Testing",
-];
+  const loadResumes = useCallback(async () => {
+    const res = await fetch("/api/resume");
+    if (res.ok) {
+      const data: Resume[] = await res.json();
+      setResumes(data);
+      if (data.length > 0 && !active) setActive(data[0]);
+    }
+    setLoading(false);
+  }, [active]);
 
-export default function ResumeEditorPage() {
+  useEffect(() => {
+    if (isLoaded && user) loadResumes();
+  }, [isLoaded, user, loadResumes]);
+
+  async function uploadFile(file: File) {
+    if (file.type !== "application/pdf") {
+      setError("Only PDF files are supported.");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("file", file);
+    const res = await fetch("/api/resume/upload", { method: "POST", body: formData });
+    if (res.ok) {
+      const newResume: Resume = await res.json();
+      setResumes((prev) => [newResume, ...prev]);
+      setActive(newResume);
+    } else {
+      const data = await res.json();
+      setError(data.error ?? "Upload failed. Please try again.");
+    }
+    setUploading(false);
+  }
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    await fetch(`/api/resume/${id}`, { method: "DELETE" });
+    setResumes((prev) => {
+      const next = prev.filter((r) => r.id !== id);
+      if (active?.id === id) setActive(next[0] ?? null);
+      return next;
+    });
+    setDeletingId(null);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(true);
+  }
+
+  function handleDragLeave() {
+    setDragging(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) uploadFile(file);
+  }
+
   return (
     <div className="resume-layout">
-      {/* Editor Panel */}
+      {/* Left panel — upload + history */}
       <div className="resume-editor-panel">
         <div className="panel-toolbar">
-          <span
-            style={{
-              fontWeight: 700,
-              fontSize: 13,
-              marginRight: 8,
-              fontFamily: "var(--font-outfit)",
-            }}
-          >
-            Editor
+          <span style={{ fontWeight: 700, fontSize: 13, fontFamily: "var(--font-outfit)" }}>
+            Resumes
           </span>
           <div className="toolbar-sep" />
-          {["Contact", "Experience", "Education", "Skills"].map((t) => (
-            <button
-              key={t}
-              className={`toolbar-btn ${t === "Experience" ? "active" : ""}`}
-            >
-              {t}
-            </button>
-          ))}
-          <div style={{ marginLeft: "auto", display: "flex", gap: 8 }}>
-            <button className="toolbar-btn">⬇ Export PDF</button>
+          <span style={{ fontSize: 12, color: "var(--muted)" }}>
+            {resumes.length} {resumes.length === 1 ? "file" : "files"}
+          </span>
+          <div style={{ marginLeft: "auto" }}>
             <button
               className="btn btn-primary"
               style={{ padding: "6px 14px", fontSize: 13 }}
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
             >
-              ✨ AI Polish
+              {uploading ? "Uploading…" : "+ Upload PDF"}
             </button>
           </div>
         </div>
 
         <div className="editor-sections">
-          {/* Contact */}
-          <div className="editor-section">
-            <div className="editor-section-header">
-              <span className="editor-section-title">Contact Information</span>
+          {/* Drop zone */}
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onClick={() => fileInputRef.current?.click()}
+            style={{
+              border: `2px dashed ${dragging ? "var(--gold)" : "var(--border2)"}`,
+              borderRadius: 12,
+              padding: "32px 24px",
+              textAlign: "center",
+              cursor: "pointer",
+              background: dragging ? "rgba(201,168,76,0.05)" : "transparent",
+              transition: "all 0.15s",
+              marginBottom: 24,
+            }}
+          >
+            <div style={{ fontSize: 28, marginBottom: 10 }}>📄</div>
+            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+              {uploading ? "Uploading…" : "Drop your PDF here"}
             </div>
-            <div className="fields-row">
-              <div className="editor-field">
-                <div className="field-label">Full Name</div>
-                <input className="field-input" defaultValue="Alex Johnson" />
-              </div>
-              <div className="editor-field">
-                <div className="field-label">Job Title</div>
-                <input
-                  className="field-input"
-                  defaultValue="Senior Product Designer"
-                />
-              </div>
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              or click to browse
             </div>
-            <div className="fields-row">
-              <div className="editor-field">
-                <div className="field-label">Email</div>
-                <input className="field-input" defaultValue="alex@email.com" />
+            {error && (
+              <div style={{ color: "var(--red)", fontSize: 12, marginTop: 10 }}>
+                {error}
               </div>
-              <div className="editor-field">
-                <div className="field-label">Phone</div>
-                <input
-                  className="field-input"
-                  defaultValue="+1 (555) 000-0000"
-                />
-              </div>
-            </div>
-            <div className="editor-field">
-              <div className="field-label">LinkedIn / Portfolio</div>
-              <input
-                className="field-input"
-                defaultValue="linkedin.com/in/alexjohnson"
-              />
-            </div>
+            )}
           </div>
 
-          {/* Experience */}
-          <div className="editor-section">
-            <div className="editor-section-header">
-              <span className="editor-section-title">Experience</span>
-              <button className="add-btn">+ Add Role</button>
-            </div>
-            {experiences.map((exp, i) => (
-              <div className="exp-card" key={i}>
-                <div className="exp-card-header">
-                  <div>
-                    <div className="exp-card-title">{exp.title}</div>
-                    <div className="exp-card-subtitle">
-                      {exp.company} · {exp.dates}
-                    </div>
-                  </div>
-                  <button className="del-btn">✕</button>
-                </div>
-                <div className="editor-field">
-                  <div className="field-label">Description</div>
-                  <textarea
-                    className="field-input field-textarea"
-                    defaultValue={exp.desc}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/pdf"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadFile(file);
+              e.target.value = "";
+            }}
+          />
 
-          {/* Skills */}
-          <div className="editor-section">
-            <div className="editor-section-header">
-              <span className="editor-section-title">Skills</span>
-              <button className="add-btn">+ Add Skill</button>
+          {/* Resume list */}
+          {loading ? (
+            <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+              Loading…
             </div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {skills.map((s) => (
+          ) : resumes.length === 0 ? (
+            <div style={{ color: "var(--muted)", fontSize: 13, textAlign: "center", padding: "20px 0" }}>
+              No resumes uploaded yet.
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--muted)", marginBottom: 4 }}>
+                Uploaded Files
+              </div>
+              {resumes.map((r) => (
                 <div
-                  key={s}
+                  key={r.id}
+                  onClick={() => setActive(r)}
                   style={{
-                    background: "var(--bg3)",
-                    border: "1px solid var(--border)",
-                    borderRadius: 6,
-                    padding: "5px 12px",
-                    fontSize: 13,
                     display: "flex",
                     alignItems: "center",
-                    gap: 8,
+                    gap: 12,
+                    padding: "12px 14px",
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    border: `1px solid ${active?.id === r.id ? "var(--gold)" : "var(--border)"}`,
+                    background: active?.id === r.id ? "rgba(201,168,76,0.06)" : "var(--bg3)",
+                    transition: "all 0.15s",
                   }}
                 >
-                  {s}
+                  <span style={{ fontSize: 20, flexShrink: 0 }}>📄</span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.file_name}
+                    </div>
+                    <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                      {formatDate(r.created_at)}
+                    </div>
+                  </div>
                   <button
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "var(--muted)",
-                      cursor: "pointer",
-                      fontSize: 12,
-                      padding: 0,
-                    }}
+                    className="del-btn"
+                    onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }}
+                    disabled={deletingId === r.id}
+                    style={{ flexShrink: 0 }}
+                    title="Delete"
                   >
-                    ✕
+                    {deletingId === r.id ? "…" : "✕"}
                   </button>
                 </div>
               ))}
             </div>
-          </div>
-        </div>
-
-        {/* AI Suggestions */}
-        <div className="ai-panel">
-          <div className="ai-panel-title">✨ AI Suggestions</div>
-          <div className="ai-suggestions">
-            {aiSuggestions.map((s, i) => (
-              <div className="ai-suggestion" key={i}>
-                <span className="ai-suggestion-icon">{s.icon}</span>
-                <span className="ai-suggestion-text">{s.text}</span>
-              </div>
-            ))}
-          </div>
+          )}
         </div>
       </div>
 
-      {/* Preview Panel */}
-      <div className="resume-preview">
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            maxWidth: 640,
-            margin: "0 auto 20px",
-          }}
-        >
+      {/* Right panel — PDF preview */}
+      <div className="resume-preview" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+        <div style={{
+          padding: "14px 24px",
+          borderBottom: "1px solid var(--border)",
+          background: "var(--bg2)",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexShrink: 0,
+        }}>
           <span style={{ fontSize: 13, color: "var(--muted)" }}>
-            Live Preview
+            {active ? `Previewing: ${active.file_name}` : "No resume selected"}
           </span>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button className="toolbar-btn">Classic</button>
-            <button className="toolbar-btn active">Modern</button>
-            <button className="toolbar-btn">Minimal</button>
-          </div>
+          {active?.signed_url && (
+            <a
+              href={active.signed_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="toolbar-btn"
+              style={{ marginLeft: "auto", textDecoration: "none" }}
+            >
+              ↗ Open in new tab
+            </a>
+          )}
         </div>
 
-        <div className="preview-doc">
-          <div className="preview-name">Alex Johnson</div>
-          <div className="preview-title">Senior Product Designer</div>
-          <div className="preview-contact">
-            <span>alex@email.com</span>
-            <span>+1 (555) 000-0000</span>
-            <span>linkedin.com/in/alexjohnson</span>
+        {active?.signed_url ? (
+          <iframe
+            key={active.signed_url}
+            src={active.signed_url}
+            style={{ flex: 1, width: "100%", border: "none", background: "#1a1a1f" }}
+            title={active.file_name}
+          />
+        ) : (
+          <div style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "var(--muted)",
+            gap: 12,
+          }}>
+            <div style={{ fontSize: 48 }}>📄</div>
+            <div style={{ fontSize: 15, fontWeight: 500 }}>No resume selected</div>
+            <div style={{ fontSize: 13 }}>Upload a PDF to preview it here</div>
           </div>
-          <div className="preview-divider" />
-          <div className="preview-section-title">Experience</div>
-          {previewExperiences.map((e, i) => (
-            <div className="preview-exp" key={i}>
-              <div className="preview-exp-title">{e.title}</div>
-              <div className="preview-exp-meta">{e.meta}</div>
-              <div className="preview-exp-desc">{e.desc}</div>
-            </div>
-          ))}
-          <div className="preview-divider" />
-          <div className="preview-section-title">Skills</div>
-          <div className="preview-skills">
-            {previewSkills.map((s) => (
-              <span className="preview-skill" key={s}>
-                {s}
-              </span>
-            ))}
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

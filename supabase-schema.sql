@@ -2,6 +2,15 @@
 -- Run this in the Supabase SQL editor
 -- ============================================================
 
+-- Resumes table (PDF uploads)
+create table if not exists resumes (
+  id uuid primary key default gen_random_uuid(),
+  clerk_id text not null,
+  file_name text not null,
+  file_url text not null,   -- storage path: {clerk_id}/{uuid}.pdf
+  created_at timestamptz not null default now()
+);
+
 -- User profiles table (per-user job preferences & skills)
 create table if not exists user_profiles (
   clerk_id text primary key,
