@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
 
 type Job = {
@@ -31,8 +32,8 @@ const sidebarNav = [
 
 const sidebarProfile = [
   { icon: "📄", label: "My Resume", href: "/resume" },
+  { icon: "👤", label: "My Profile", href: "/profile" },
   { icon: "⚙️", label: "Preferences" },
-  { icon: "👤", label: "Account" },
 ];
 
 const filters = ["All", "Remote", "Full-time", "Contract", "New Today"];
@@ -60,6 +61,7 @@ function timeAgo(dateStr: string) {
 
 export default function DashboardPage() {
   const { user, isLoaded } = useUser();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied">("all");
   const [activeFilter, setActiveFilter] = useState("All");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -70,14 +72,20 @@ export default function DashboardPage() {
   const firstName = user?.firstName ?? user?.username ?? "there";
 
   const loadData = useCallback(async () => {
-    const [jobsRes, statsRes] = await Promise.all([
+    const [profileRes, jobsRes, statsRes] = await Promise.all([
+      fetch("/api/profile"),
       fetch("/api/jobs"),
       fetch("/api/dashboard/stats"),
     ]);
+    // Redirect new users to profile setup
+    if (profileRes.status === 404) {
+      router.push("/profile");
+      return;
+    }
     if (jobsRes.ok) setJobs(await jobsRes.json());
     if (statsRes.ok) setStats(await statsRes.json());
     setLoading(false);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (isLoaded && user) loadData();
