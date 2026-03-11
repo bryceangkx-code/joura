@@ -55,7 +55,7 @@ function timeAgo(dateStr: string) {
 }
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, isLoaded } = useUser();
   const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied">("all");
   const [activeFilter, setActiveFilter] = useState("All");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -76,8 +76,8 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    if (isLoaded && user) loadData();
+  }, [isLoaded, user, loadData]);
 
   async function handleSave(jobId: string) {
     setActionLoading(jobId);
