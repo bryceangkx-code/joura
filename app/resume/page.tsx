@@ -53,6 +53,7 @@ function scoreColor(score: number) {
 export default function ResumePage() {
   const { user, isLoaded } = useUser();
   const [plan, setPlan] = useState<Plan>("free");
+  const [planLoading, setPlanLoading] = useState(true);
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [active, setActive] = useState<Resume | null>(null);
   const [loading, setLoading] = useState(true);
@@ -104,6 +105,7 @@ export default function ResumePage() {
       const profile = await profileRes.json();
       setPlan(profile?.plan ?? "free");
     }
+    setPlanLoading(false);
     setLoading(false);
   }, []);
 
@@ -722,16 +724,16 @@ export default function ResumePage() {
         {/* Polish results — with premium lock overlay */}
         {rightView === "polished" && polishResult && (
           <div style={{ flex: 1, overflowY: "auto", padding: "40px", position: "relative" }}>
-            {/* Results — blurred for non-premium, visible for premium */}
+            {/* Results — blurred for non-premium (never blur during plan load) */}
             <div style={{
               maxWidth: 600, margin: "0 auto",
-              ...(plan !== "premium" ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : {}),
+              ...(!planLoading && plan !== "premium" ? { filter: "blur(5px)", userSelect: "none", pointerEvents: "none" } : {}),
             }}>
               <PolishResults result={polishResult} />
             </div>
 
-            {/* Lock overlay — only shown to non-premium users */}
-            {plan !== "premium" && (
+            {/* Lock overlay — only shown once plan is confirmed non-premium */}
+            {!planLoading && plan !== "premium" && (
               <div style={{
                 position: "absolute", inset: 0,
                 display: "flex", alignItems: "center", justifyContent: "center",

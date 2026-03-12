@@ -304,7 +304,31 @@ function Dashboard() {
 
         <div className="page-header">
           <div>
-            <div className="page-title">{"Welcome back, " + firstName}</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div className="page-title">{"Welcome back, " + firstName}</div>
+              {!loading && (
+                plan === "premium" ? (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100,
+                    background: "rgba(201,168,76,0.15)", color: "var(--gold)",
+                    letterSpacing: "0.5px", border: "1px solid rgba(201,168,76,0.3)",
+                  }}>⚡ PREMIUM</span>
+                ) : plan === "basic" ? (
+                  <span style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100,
+                    background: "rgba(107,107,126,0.12)", color: "var(--muted)",
+                    letterSpacing: "0.5px", border: "1px solid var(--border)",
+                  }}>BASIC</span>
+                ) : (
+                  <Link href="/pricing" style={{
+                    fontSize: 11, fontWeight: 700, padding: "3px 10px", borderRadius: 100,
+                    background: "rgba(107,107,126,0.08)", color: "var(--muted)",
+                    letterSpacing: "0.5px", border: "1px solid var(--border)",
+                    textDecoration: "none", transition: "all 0.15s",
+                  }}>FREE → Upgrade</Link>
+                )
+              )}
+            </div>
             <div className="page-sub">
               {loading
                 ? "Loading your job feed…"
