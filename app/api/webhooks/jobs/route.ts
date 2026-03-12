@@ -73,6 +73,9 @@ export async function POST(req: Request) {
     const postedDate = rawDate
       ? String(rawDate).split("T")[0]
       : new Date().toISOString().split("T")[0];
+    const jobUrl = job.job_url || job.job_apply_link
+      ? String(job.job_url || job.job_apply_link)
+      : null;
 
     console.log(`[n8n webhook] scoring ${i + 1}/${jobs.length}: "${title}" at "${company}"`);
     let fit_score = 0;
@@ -94,6 +97,7 @@ export async function POST(req: Request) {
       job_type: jobType,
       fit_score,
       fit_reason,
+      job_url: jobUrl,
       status: "new",
       posted_date: postedDate,
     });

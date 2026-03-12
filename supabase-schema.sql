@@ -34,6 +34,9 @@ alter table user_profiles add column if not exists stripe_subscription_id text;
 -- Migration: add fit_reason column to jobs table
 alter table jobs add column if not exists fit_reason text;
 
+-- Migration: add job_url column to jobs table (external application link)
+alter table jobs add column if not exists job_url text;
+
 -- Jobs table (already exists — shown here for reference)
 -- create table if not exists jobs (
 --   id uuid primary key default gen_random_uuid(),

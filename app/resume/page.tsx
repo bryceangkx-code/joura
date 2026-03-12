@@ -83,6 +83,11 @@ export default function ResumePage() {
   // Mobile: toggle between left (upload/edit) and right (preview) panels
   const [mobileShowPreview, setMobileShowPreview] = useState(false);
 
+  // Pending apply — set from dashboard "Tailor Resume & Apply"
+  const [pendingApply, setPendingApply] = useState<{
+    id: string; title: string; company: string; apply_url: string | null;
+  } | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadResumes = useCallback(async () => {
@@ -105,6 +110,13 @@ export default function ResumePage() {
   useEffect(() => {
     if (isLoaded && user) loadResumes();
   }, [isLoaded, user, loadResumes]);
+
+  useEffect(() => {
+    const raw = sessionStorage.getItem("joura_pending_apply");
+    if (raw) {
+      try { setPendingApply(JSON.parse(raw)); } catch { /* ignore */ }
+    }
+  }, []);
 
   async function parseResume(resumeId: string) {
     setRightView("parsing");
@@ -280,7 +292,45 @@ export default function ResumePage() {
   const isProcessing = uploading || rightView === "parsing" || rightView === "polishing";
 
   return (
-    <div className="resume-layout">
+    <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 64px)" }}>
+
+    {/* ── Pending apply banner ── */}
+    {pendingApply && (
+      <div style={{
+        background: "rgba(201,168,76,0.08)", borderBottom: "1px solid rgba(201,168,76,0.25)",
+        padding: "12px 24px", display: "flex", alignItems: "center", gap: 12, flexShrink: 0,
+      }}>
+        <span style={{ fontSize: 16 }}>✨</span>
+        <div style={{ flex: 1, fontSize: 13 }}>
+          <span style={{ fontWeight: 600, color: "var(--gold)" }}>Applying to {pendingApply.title}</span>
+          <span style={{ color: "var(--muted)" }}> at {pendingApply.company} — paste the job description below to polish your resume, then click Apply.</span>
+        </div>
+        {pendingApply.apply_url && (
+          <a
+            href={pendingApply.apply_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+            style={{ fontSize: 12, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}
+            onClick={() => {
+              sessionStorage.removeItem("joura_pending_apply");
+              setPendingApply(null);
+            }}
+          >
+            Apply Now →
+          </a>
+        )}
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: 12, padding: "6px 10px", flexShrink: 0 }}
+          onClick={() => { sessionStorage.removeItem("joura_pending_apply"); setPendingApply(null); }}
+        >
+          ✕
+        </button>
+      </div>
+    )}
+
+    <div className="resume-layout" style={{ flex: 1, minHeight: 0 }}>
 
       {/* ── Mobile panel toggle ── */}
       <div className="resume-mobile-toggle">
@@ -561,10 +611,24 @@ export default function ResumePage() {
             </a>
           )}
           {(rightView === "parsed" || rightView === "polished") && (
-            <button className="toolbar-btn" style={{ marginLeft: "auto" }}
-              onClick={() => { setRightView("preview"); setParsedData(null); }}>
-              ← Back to preview
-            </button>
+            <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
+              {rightView === "polished" && pendingApply?.apply_url && (
+                <a
+                  href={pendingApply.apply_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{ fontSize: 12, padding: "6px 14px", textDecoration: "none" }}
+                  onClick={() => { sessionStorage.removeItem("joura_pending_apply"); setPendingApply(null); }}
+                >
+                  Apply Now →
+                </a>
+              )}
+              <button className="toolbar-btn"
+                onClick={() => { setRightView("preview"); setParsedData(null); }}>
+                ← Back to preview
+              </button>
+            </div>
           )}
           {rightView === "editing" && (
             <button className="toolbar-btn" style={{ marginLeft: "auto" }}
@@ -723,6 +787,7 @@ export default function ResumePage() {
           )
         )}
       </div>
+    </div>
     </div>
   );
 }
