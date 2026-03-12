@@ -77,6 +77,7 @@ function Dashboard() {
 
   const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied">("all");
   const [activeFilter, setActiveFilter] = useState("All");
+  const [searchQuery, setSearchQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [plan, setPlan] = useState<Plan>("free");
   const [totalCount, setTotalCount] = useState(0);
@@ -156,7 +157,24 @@ function Dashboard() {
     setScoringId(null);
   }
 
-  const filtered = activeTab === "all" ? jobs : jobs.filter((j) => j.status === activeTab);
+  const filtered = jobs.filter((j) => {
+    if (activeTab !== "all" && j.status !== activeTab) return false;
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase();
+      if (!clean(j.title).toLowerCase().includes(q) && !clean(j.company).toLowerCase().includes(q)) return false;
+    }
+    if (activeFilter === "Remote") {
+      if (!clean(j.location).toLowerCase().includes("remote") && !clean(j.job_type).toLowerCase().includes("remote")) return false;
+    } else if (activeFilter === "Full-time") {
+      if (!clean(j.job_type).toLowerCase().includes("full")) return false;
+    } else if (activeFilter === "Contract") {
+      if (!clean(j.job_type).toLowerCase().includes("contract")) return false;
+    } else if (activeFilter === "New Today") {
+      const today = new Date().toDateString();
+      if (new Date(j.posted_date).toDateString() !== today) return false;
+    }
+    return true;
+  });
 
   const statCards = stats
     ? [
@@ -307,7 +325,11 @@ function Dashboard() {
 
         <div className="search-bar">
           <span style={{ color: "var(--muted)" }}>🔍</span>
-          <input placeholder="Search job title, company, or skill..." />
+          <input
+            placeholder="Search job title, company, or skill..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
           <button className="btn btn-ghost" style={{ whiteSpace: "nowrap", fontSize: 13 }}>
             Filters ▾
           </button>

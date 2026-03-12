@@ -10,24 +10,6 @@ const columns = [
       { label: "Pricing", href: "/pricing" },
     ],
   },
-  {
-    title: "Company",
-    links: [
-      { label: "About", href: "/" },
-      { label: "Blog", href: "/" },
-      { label: "Careers", href: "/" },
-      { label: "Press", href: "/" },
-    ],
-  },
-  {
-    title: "Legal",
-    links: [
-      { label: "Privacy", href: "/" },
-      { label: "Terms", href: "/" },
-      { label: "Security", href: "/" },
-      { label: "Cookies", href: "/" },
-    ],
-  },
 ];
 
 export default function Footer() {
@@ -57,7 +39,7 @@ export default function Footer() {
         ))}
       </div>
       <div className="footer-bottom">
-        <div className="footer-copy">© 2025 Joura. All rights reserved.</div>
+        <div className="footer-copy">© 2026 Joura. All rights reserved.</div>
         <div style={{ display: "flex", gap: 16 }}>
           {["Twitter", "LinkedIn", "GitHub"].map((s) => (
             <span key={s} className="footer-link">
