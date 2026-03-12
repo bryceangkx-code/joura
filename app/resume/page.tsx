@@ -80,6 +80,9 @@ export default function ResumePage() {
   // Right panel view
   const [rightView, setRightView] = useState<RightView>("preview");
 
+  // Mobile: toggle between left (upload/edit) and right (preview) panels
+  const [mobileShowPreview, setMobileShowPreview] = useState(false);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadResumes = useCallback(async () => {
@@ -279,8 +282,26 @@ export default function ResumePage() {
   return (
     <div className="resume-layout">
 
+      {/* ── Mobile panel toggle ── */}
+      <div className="resume-mobile-toggle">
+        <button
+          className={`toolbar-btn${!mobileShowPreview ? " active" : ""}`}
+          style={{ flex: 1 }}
+          onClick={() => setMobileShowPreview(false)}
+        >
+          ✏️ Edit
+        </button>
+        <button
+          className={`toolbar-btn${mobileShowPreview ? " active" : ""}`}
+          style={{ flex: 1 }}
+          onClick={() => setMobileShowPreview(true)}
+        >
+          👁 Preview
+        </button>
+      </div>
+
       {/* ── Left panel ── */}
-      <div className="resume-editor-panel">
+      <div className={`resume-editor-panel${mobileShowPreview ? " resume-preview-mobile-hidden" : ""}`}>
         <div className="panel-toolbar">
           <span style={{ fontWeight: 700, fontSize: 13, fontFamily: "var(--font-outfit)" }}>
             {rightView === "editing" ? "Edit Resume" : "Resumes"}
@@ -518,7 +539,7 @@ export default function ResumePage() {
       </div>
 
       {/* ── Right panel ── */}
-      <div className="resume-preview" style={{ padding: 0, display: "flex", flexDirection: "column" }}>
+      <div className={`resume-preview${!mobileShowPreview ? " resume-preview-mobile-hidden" : ""}`} style={{ padding: 0, display: "flex", flexDirection: "column" }}>
 
         {/* Toolbar */}
         <div style={{

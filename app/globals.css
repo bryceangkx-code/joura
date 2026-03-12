@@ -205,6 +205,7 @@ h1, h2, h3, h4, h5 {
 .status-saved { background: rgba(107,107,126,0.15); color: var(--muted); }
 
 /* RESUME EDITOR */
+.resume-mobile-toggle { display: none; }
 .resume-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: calc(100vh - 64px); }
 .resume-editor-panel { border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
 .panel-toolbar {
@@ -352,6 +353,100 @@ h1, h2, h3, h4, h5 {
 }
 .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
 .tab:hover:not(.active) { color: var(--text); }
+
+/* ──────────────────────────────────────────────
+   MOBILE RESPONSIVENESS  (≤ 768px)
+   Target: 375px (iPhone SE) minimum
+   ────────────────────────────────────────────── */
+@media (max-width: 768px) {
+
+  /* NAV */
+  .nav { padding: 0 16px; }
+  .nav-links { display: none; }
+  .nav-hamburger { display: block !important; }
+  .nav-actions .btn-ghost:not(.nav-hamburger),
+  .nav-actions .btn-primary:not(.nav-hamburger) { display: none; }
+  .nav-mobile-menu {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 99;
+    background: rgba(10,10,11,0.97); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 12px 16px 20px; display: flex; flex-direction: column; gap: 4px;
+  }
+  .nav-mobile-link {
+    display: block; padding: 12px 16px; border-radius: 8px;
+    color: var(--muted); font-size: 15px; text-decoration: none; transition: all 0.15s;
+  }
+  .nav-mobile-link:hover, .nav-mobile-link.active { background: var(--bg3); color: var(--text); }
+
+  /* LANDING — Hero */
+  .hero { grid-template-columns: 1fr; padding: 48px 20px 40px; gap: 32px; }
+  .hero h1 { font-size: 36px; letter-spacing: -1px; }
+  .hero-sub { font-size: 15px; }
+  .hero-cta { flex-wrap: wrap; }
+  .hero-card { display: none; }
+
+  /* LANDING — Stats */
+  .stats { padding: 40px 20px; }
+  .stats-inner { grid-template-columns: repeat(2, 1fr); gap: 24px 16px; }
+  .stat-number { font-size: 30px; }
+
+  /* LANDING — Features */
+  .features { padding: 48px 20px; }
+  .features h2 { font-size: 28px; letter-spacing: -1px; }
+  .features-grid { grid-template-columns: 1fr; }
+
+  /* DASHBOARD */
+  .dashboard { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
+  .main-content { padding: 20px 16px; }
+  .page-header { flex-direction: column; gap: 12px; align-items: flex-start; }
+  .page-title { font-size: 22px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .stat-card { padding: 14px; }
+  .stat-card-value { font-size: 22px; }
+
+  /* Job table → stacked cards on mobile */
+  .jobs-table { background: transparent; border: none; border-radius: 0; }
+  .table-head { display: none; }
+  .table-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin-bottom: 8px;
+    background: var(--bg2);
+    padding: 14px 16px;
+  }
+  .table-row:last-child { margin-bottom: 0; border-bottom: 1px solid var(--border); }
+  .table-row:hover { background: var(--bg2); }
+
+  /* Filter chips — horizontal scroll, no wrap */
+  .filters {
+    flex-wrap: nowrap; overflow-x: auto;
+    padding-bottom: 4px; -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+
+  /* RESUME */
+  .resume-layout { grid-template-columns: 1fr; height: auto; min-height: calc(100vh - 64px); }
+  .resume-editor-panel { height: auto; min-height: 0; }
+  .resume-preview-mobile-hidden { display: none !important; }
+  .resume-mobile-toggle {
+    display: flex; gap: 8px; padding: 10px 16px;
+    border-bottom: 1px solid var(--border); background: var(--bg2);
+  }
+
+  /* PRICING */
+  .pricing-page { padding: 48px 20px; }
+  .pricing-header h2 { font-size: 30px; letter-spacing: -1px; }
+  .pricing-grid { grid-template-columns: 1fr; max-width: 440px; margin-left: auto; margin-right: auto; }
+  .pricing-card { padding: 28px 24px; }
+
+  /* FOOTER */
+  .footer { padding: 40px 20px; }
+  .footer-inner { grid-template-columns: 1fr; gap: 28px; }
+  .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
+}
 
 /* SCROLLBAR */
 ::-webkit-scrollbar { width: 6px; }
