@@ -12,7 +12,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "title and company are required" }, { status: 400 });
   }
 
-  const fit_score = await scoreJob(title, company, job_type ?? "Full-time", description);
+  const result = await scoreJob(title, company, job_type ?? "Full-time", description);
 
-  return NextResponse.json({ fit_score });
+  return NextResponse.json({ fit_score: result.score, fit_reason: result.reason });
 }

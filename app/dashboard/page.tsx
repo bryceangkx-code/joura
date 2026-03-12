@@ -11,6 +11,7 @@ type Job = {
   company: string;
   location: string;
   fit_score: number | null;
+  fit_reason: string | null;
   job_type: string;
   status: "new" | "saved" | "applied";
   posted_date: string;
@@ -151,8 +152,8 @@ function Dashboard() {
     setScoringId(jobId);
     const res = await fetch(`/api/jobs/${jobId}/score`, { method: "POST" });
     if (res.ok) {
-      const { fit_score } = await res.json();
-      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, fit_score } : j)));
+      const { fit_score, fit_reason } = await res.json();
+      setJobs((prev) => prev.map((j) => (j.id === jobId ? { ...j, fit_score, fit_reason } : j)));
     }
     setScoringId(null);
   }
@@ -374,7 +375,14 @@ function Dashboard() {
                 </div>
                 <div className="td">
                   {job.fit_score !== null ? (
-                    <span className={`fit-badge ${fitClass(job.fit_score)}`}>{job.fit_score}%</span>
+                    <div>
+                      <span className={`fit-badge ${fitClass(job.fit_score)}`}>{job.fit_score}%</span>
+                      {job.fit_reason && (
+                        <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 4, maxWidth: 220, lineHeight: 1.4 }}>
+                          {job.fit_reason}
+                        </div>
+                      )}
+                    </div>
                   ) : plan === "free" ? (
                     <span className="fit-badge fit-med"
                       style={{ filter: "blur(3px)", userSelect: "none", cursor: "default" }}

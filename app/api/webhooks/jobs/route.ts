@@ -38,15 +38,19 @@ export async function POST(req: Request) {
   // Fetch the user's profile once (all jobs in a batch share the same user_id)
   const userId = String((jobs[0] as Record<string, unknown>).user_id);
   let userProfile: UserProfile | undefined;
+  let userPlan: string | undefined;
+  let userJobTitle: string | undefined;
   try {
     const { data } = await createAdminClient()
       .from("user_profiles")
-      .select("skills, preferred_job_types, preferred_locations")
+      .select("plan, job_title, skills, preferred_job_types, preferred_locations")
       .eq("clerk_id", userId)
       .maybeSingle();
     if (data) {
       userProfile = data;
-      console.log("[n8n webhook] loaded user profile, skills:", data.skills);
+      userPlan = data.plan ?? "free";
+      userJobTitle = data.job_title ?? undefined;
+      console.log("[n8n webhook] loaded user profile, plan:", userPlan, "skills:", data.skills);
     } else {
       console.log("[n8n webhook] no user profile found, using fallback scoring");
     }
@@ -72,8 +76,11 @@ export async function POST(req: Request) {
 
     console.log(`[n8n webhook] scoring ${i + 1}/${jobs.length}: "${title}" at "${company}"`);
     let fit_score = 0;
+    let fit_reason: string | null = null;
     try {
-      fit_score = await scoreJob(title, company, jobType, description, userProfile);
+      const result = await scoreJob(title, company, jobType, description, userProfile, userPlan, userJobTitle);
+      fit_score = result.score;
+      fit_reason = result.reason;
       console.log(`[n8n webhook] score for "${title}": ${fit_score}`);
     } catch (err) {
       console.error(`[n8n webhook] scoring failed for "${title}":`, err);
@@ -86,12 +93,13 @@ export async function POST(req: Request) {
       location,
       job_type: jobType,
       fit_score,
+      fit_reason,
       status: "new",
       posted_date: postedDate,
     });
 
     if (i < jobs.length - 1) {
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
   }
 

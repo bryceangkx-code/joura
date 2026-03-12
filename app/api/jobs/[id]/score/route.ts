@@ -50,11 +50,11 @@ export async function POST(
 
   const response = await client.messages.create({
     model: "claude-haiku-4-5-20251001",
-    max_tokens: 64,
+    max_tokens: 128,
     messages: [
       {
         role: "user",
-        content: `Score how well this candidate matches this job. Return ONLY valid JSON: {"score": <integer 0-100>}
+        content: `Score how well this candidate matches this job. Return ONLY valid JSON: {"score": <integer 0-100>, "reason": "<one concise sentence>"}
 
 CANDIDATE:
 ${candidateContext}
@@ -66,15 +66,16 @@ ${jobContext}`,
   });
 
   const raw = response.content[0].type === "text" ? response.content[0].text.trim() : "{}";
-  const clean = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-  const { score } = JSON.parse(clean);
+  const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  const { score, reason } = JSON.parse(cleaned);
   const fitScore = Math.min(100, Math.max(0, Math.round(score)));
+  const fitReason: string | null = reason ?? null;
 
   await supabase
     .from("jobs")
-    .update({ fit_score: fitScore })
+    .update({ fit_score: fitScore, fit_reason: fitReason })
     .eq("id", id)
     .eq("user_id", userId);
 
-  return NextResponse.json({ fit_score: fitScore });
+  return NextResponse.json({ fit_score: fitScore, fit_reason: fitReason });
 }
