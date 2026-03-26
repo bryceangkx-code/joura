@@ -71,7 +71,7 @@ export default function SwipeCard({ job, isTop, onSwipe, onTap }: SwipeCardProps
   return (
     <animated.div
       {...(isTop ? bind() : {})}
-      style={{ x, y, rotate, scale, touchAction: 'none', width: '100%', height: '100%', display: 'block' }}
+      style={{ x, y, rotate, scale, touchAction: 'none', position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
       className="cursor-grab active:cursor-grabbing select-none"
     >
       <div className="relative w-full h-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 flex flex-col overflow-hidden">

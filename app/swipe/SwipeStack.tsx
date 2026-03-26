@@ -95,9 +95,9 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      {/* Card stack */}
-      <div className="relative flex-1 mx-4 mt-2 mb-3 min-h-0 overflow-hidden rounded-3xl">
+    <div style={{ height: '100%', display: 'grid', gridTemplateRows: '1fr auto auto', overflow: 'hidden' }}>
+      {/* Card stack — 1fr row gives a CSS-definite height, unlike flex-1 */}
+      <div style={{ position: 'relative', margin: '8px 16px 12px', overflow: 'hidden', borderRadius: '1.5rem', minHeight: 0 }}>
         {/* Background cards (visual depth) */}
         {jobs.slice(Math.max(0, jobs.length - 3), jobs.length - 1).map((job, i) => (
           <div
@@ -111,20 +111,18 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
           />
         ))}
 
-        {/* Top card (interactive) — plain div anchors position, animated div handles transforms */}
-        <div className="absolute inset-0" style={{ zIndex: 10 }}>
-          <SwipeCard
-            key={jobs[jobs.length - 1].id}
-            job={jobs[jobs.length - 1]}
-            isTop={true}
-            onSwipe={handleSwipe}
-            onTap={() => setDetailJob(jobs[jobs.length - 1])}
-          />
-        </div>
+        {/* Top card (interactive) */}
+        <SwipeCard
+          key={jobs[jobs.length - 1].id}
+          job={jobs[jobs.length - 1]}
+          isTop={true}
+          onSwipe={handleSwipe}
+          onTap={() => setDetailJob(jobs[jobs.length - 1])}
+        />
       </div>
 
       {/* Job counter */}
-      <p className="text-center text-xs text-gray-400 mt-1">{jobs.length} job{jobs.length !== 1 ? 's' : ''} left</p>
+      <p className="text-center text-xs text-gray-400 py-1">{jobs.length} job{jobs.length !== 1 ? 's' : ''} left</p>
 
       {/* Controls */}
       <SwipeControls onSwipe={handleSwipe} credits={credits} onBuyCredits={handleBuyCredits} />
