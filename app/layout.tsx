@@ -20,6 +20,12 @@ export const metadata: Metadata = {
   title: "Joura — AI-Powered Job Search",
   description:
     "Joura aggregates job listings, scores them against your profile, and automates the job search grind.",
+  manifest: "/manifest.json",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-title": "Joura",
+  },
 };
 
 export default function RootLayout({
