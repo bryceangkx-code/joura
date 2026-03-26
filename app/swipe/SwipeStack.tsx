@@ -97,7 +97,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
   return (
     <div className="flex flex-col h-full">
       {/* Card stack */}
-      <div className="relative flex-1 mx-3 mt-2 min-h-0 overflow-hidden rounded-2xl">
+      <div className="relative flex-1 mx-4 mt-2 mb-3 min-h-0 overflow-hidden rounded-3xl">
         {/* Background cards (visual depth) */}
         {jobs.slice(Math.max(0, jobs.length - 3), jobs.length - 1).map((job, i) => (
           <div
