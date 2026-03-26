@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Footer from "@/components/Footer";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 
 const mockJobs = [
   { id: 1, title: "Senior Product Designer", company: "Stripe", location: "Remote", fit: 92 },
@@ -29,7 +31,10 @@ function fitClass(score: number) {
   return score >= 80 ? "fit-high" : score >= 65 ? "fit-med" : "fit-low";
 }
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  const { userId } = await auth();
+  if (userId) redirect("/dashboard");
+
   return (
     <div className="landing">
       <section className="hero">

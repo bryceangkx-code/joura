@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     const jobType = String(job.job_type || job.job_employment_type || "Full-time").replace(/^=+/, "").trim();
     const location = String(job.location || job.job_city || "Remote").replace(/^=+/, "").trim();
     const description = job.description || job.job_description
-      ? String(job.description || job.job_description)
+      ? String(job.description || job.job_description).replace(/^=+/, "").trim()
       : undefined;
     const rawDate = job.posted_date || job.job_posted_at_datetime_utc;
     const postedDate = rawDate
@@ -98,6 +98,7 @@ export async function POST(req: Request) {
       fit_score,
       fit_reason,
       job_url: jobUrl,
+      job_description: description ?? null,
       status: "new",
       posted_date: postedDate,
     });

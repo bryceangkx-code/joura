@@ -86,7 +86,7 @@ export default function ResumePage() {
 
   // Pending apply — set from dashboard "Tailor Resume & Apply"
   const [pendingApply, setPendingApply] = useState<{
-    id: string; title: string; company: string; apply_url: string | null;
+    id: string; title: string; company: string; apply_url: string | null; job_description: string | null;
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -116,7 +116,11 @@ export default function ResumePage() {
   useEffect(() => {
     const raw = sessionStorage.getItem("joura_pending_apply");
     if (raw) {
-      try { setPendingApply(JSON.parse(raw)); } catch { /* ignore */ }
+      try {
+        const parsed = JSON.parse(raw);
+        setPendingApply(parsed);
+        if (parsed.job_description) setJobDescription(parsed.job_description);
+      } catch { /* ignore */ }
     }
   }, []);
 
@@ -305,23 +309,21 @@ export default function ResumePage() {
         <span style={{ fontSize: 16 }}>✨</span>
         <div style={{ flex: 1, fontSize: 13 }}>
           <span style={{ fontWeight: 600, color: "var(--gold)" }}>Applying to {pendingApply.title}</span>
-          <span style={{ color: "var(--muted)" }}> at {pendingApply.company} — paste the job description below to polish your resume, then click Apply.</span>
+          <span style={{ color: "var(--muted)" }}>
+            {pendingApply.job_description
+              ? ` at ${pendingApply.company} — job description pre-filled. Click Analyse & Polish when ready.`
+              : ` at ${pendingApply.company} — open the job listing, copy the description, paste it below, then click Analyse & Polish.`}
+          </span>
         </div>
-        {pendingApply.apply_url && (
-          <a
-            href={pendingApply.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
-            style={{ fontSize: 12, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}
-            onClick={() => {
-              sessionStorage.removeItem("joura_pending_apply");
-              setPendingApply(null);
-            }}
-          >
-            Apply Now →
-          </a>
-        )}
+        <a
+          href={pendingApply.apply_url ?? `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(`${pendingApply.title} ${pendingApply.company}`)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="btn btn-outline"
+          style={{ fontSize: 12, padding: "6px 14px", textDecoration: "none", whiteSpace: "nowrap", flexShrink: 0 }}
+        >
+          View Job →
+        </a>
         <button
           className="btn btn-ghost"
           style={{ fontSize: 12, padding: "6px 10px", flexShrink: 0 }}
