@@ -43,19 +43,19 @@ export default function SwipeCard({ job, isTop, onSwipe, onTap }: SwipeCardProps
     if (active) {
       api.start({ x: mx, y: my, rotate: mx / 20, scale: 1.02, immediate: true })
     } else {
-      const isRight = mx > SWIPE_THRESHOLD || vx > 0.5
-      const isLeft = mx < -SWIPE_THRESHOLD || vx < -0.5
-      const isSuper = my < SUPER_THRESHOLD
+      const isRight = mx > SWIPE_THRESHOLD || (mx > 20 && vx > 0.5)
+      const isLeft = mx < -SWIPE_THRESHOLD || (mx < -20 && vx < -0.5)
+      const isSuper = my < SUPER_THRESHOLD && !isRight && !isLeft
 
-      if (isSuper) {
-        api.start({ x: 0, y: -600, rotate: 0, scale: 0.8 })
-        onSwipe('super')
-      } else if (isRight) {
+      if (isRight) {
         api.start({ x: 600, y: my, rotate: 30, scale: 0.8 })
         onSwipe('right')
       } else if (isLeft) {
         api.start({ x: -600, y: my, rotate: -30, scale: 0.8 })
         onSwipe('left')
+      } else if (isSuper) {
+        api.start({ x: 0, y: -600, rotate: 0, scale: 0.8 })
+        onSwipe('super')
       } else {
         api.start({ x: 0, y: 0, rotate: 0, scale: 1 })
       }
