@@ -57,7 +57,7 @@ export default async function SwipePage({
     : (jobs ?? [])
 
   return (
-    <div className="flex flex-col h-[100dvh] max-w-md mx-auto bg-gray-100">
+    <div className="flex flex-col h-[100dvh] max-w-md mx-auto bg-gray-100" style={{ paddingLeft: 'env(safe-area-inset-left)', paddingRight: 'env(safe-area-inset-right)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 pb-2" style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}>
         <a href="/dashboard" className="text-gray-500 text-sm">← Dashboard</a>
@@ -81,7 +81,7 @@ export default async function SwipePage({
       )}
 
       {/* Swipe stack fills remaining height */}
-      <div className="flex-1 min-h-0 h-full">
+      <div className="flex-1 min-h-0 flex flex-col">
         <SwipeStack
           initialJobs={visibleJobs.reverse()}
           initialCredits={credits}
