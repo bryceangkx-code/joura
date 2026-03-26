@@ -13,6 +13,7 @@ type Job = {
   fit_score: number | null;
   fit_reason: string | null;
   job_url: string | null;
+  job_description: string | null;
   job_type: string;
   status: "new" | "saved" | "applied";
   posted_date: string;
@@ -54,6 +55,12 @@ function clean(val: string) {
   return val?.replace(/^=+/, "").trim() ?? "";
 }
 
+function applyUrl(job: Job) {
+  if (job.job_url) return job.job_url;
+  const q = encodeURIComponent(`${clean(job.title)} ${clean(job.company)}`);
+  return `https://www.linkedin.com/jobs/search/?keywords=${q}`;
+}
+
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const days = Math.floor(diff / 86400000);
@@ -77,7 +84,9 @@ function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied" | "cover_letters">("all");
+  const [coverLetters, setCoverLetters] = useState<Array<{id: string, content: string, job_id: string, created_at: string}>>([])
+  const [coverLettersLoaded, setCoverLettersLoaded] = useState(false)
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -90,6 +99,8 @@ function Dashboard() {
   const [upgradedBanner, setUpgradedBanner] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [applyModal, setApplyModal] = useState<Job | null>(null);
+  const [hideWeakFit, setHideWeakFit] = useState(false);
+  const [expandedJd, setExpandedJd] = useState<string | null>(null);
 
   const firstName = user?.firstName ?? user?.username ?? "there";
 
@@ -145,9 +156,7 @@ function Dashboard() {
   }
 
   async function doQuickApply(job: Job) {
-    if (job.job_url) {
-      window.open(job.job_url, "_blank", "noopener,noreferrer");
-    }
+    window.open(applyUrl(job), "_blank", "noopener,noreferrer");
     setActionLoading(job.id);
     const res = await fetch(`/api/jobs/${job.id}/apply`, { method: "POST" });
     if (res.ok) {
@@ -155,7 +164,7 @@ function Dashboard() {
       setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, status } : j)));
       const statsRes = await fetch("/api/dashboard/stats");
       if (statsRes.ok) setStats(await statsRes.json());
-      showToast(job.job_url ? "Good luck! Job marked as applied ✓" : "Job marked as applied ✓");
+      showToast("Good luck! Job marked as applied ✓");
     }
     setActionLoading(null);
     setApplyModal(null);
@@ -176,6 +185,7 @@ function Dashboard() {
         title: clean(job.title),
         company: clean(job.company),
         apply_url: job.job_url,
+        job_description: job.job_description ?? null,
       }));
     }
     setApplyModal(null);
@@ -208,6 +218,7 @@ function Dashboard() {
       const today = new Date().toDateString();
       if (new Date(j.posted_date).toDateString() !== today) return false;
     }
+    if (hideWeakFit && (j.fit_score === null || j.fit_score <= 50)) return false;
     return true;
   });
 
@@ -228,6 +239,7 @@ function Dashboard() {
   const planLabel = plan.charAt(0).toUpperCase() + plan.slice(1);
 
   return (
+    <>
     <div className="dashboard">
       <aside className="sidebar">
         <div className="sidebar-section">
@@ -380,6 +392,19 @@ function Dashboard() {
               {l}
             </button>
           ))}
+          <button
+            className={`tab ${activeTab === "cover_letters" ? "active" : ""}`}
+            onClick={() => {
+              setActiveTab("cover_letters")
+              if (!coverLettersLoaded) {
+                fetch('/api/cover-letters')
+                  .then(r => r.json())
+                  .then(d => { setCoverLetters(d.coverLetters ?? []); setCoverLettersLoaded(true) })
+              }
+            }}
+          >
+            Cover Letters
+          </button>
         </div>
 
         <div className="search-bar">
@@ -401,9 +426,46 @@ function Dashboard() {
               {f}
             </button>
           ))}
+          {plan === "premium" && (
+            <button
+              className={`filter-pill ${hideWeakFit ? "active" : ""}`}
+              onClick={() => setHideWeakFit((v) => !v)}
+              style={hideWeakFit ? { background: "rgba(201,168,76,0.15)", borderColor: "rgba(201,168,76,0.4)", color: "var(--gold)" } : {}}
+            >
+              ⚡ High Fit Only
+            </button>
+          )}
         </div>
 
-        {loading ? (
+        {activeTab === 'cover_letters' ? (
+          <div className="space-y-4 mt-4">
+            {coverLetters.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
+                <p className="text-4xl mb-3">★</p>
+                <p className="font-medium">No cover letters yet</p>
+                <p className="text-sm mt-1">Superlike a job in the swipe view to generate one</p>
+                <a href="/swipe" className="mt-4 inline-block px-5 py-2 bg-gray-900 text-white rounded-xl text-sm font-medium">
+                  Open Swipe View →
+                </a>
+              </div>
+            ) : (
+              coverLetters.map((cl) => (
+                <div key={cl.id} className="bg-white border border-gray-200 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs text-gray-400">{new Date(cl.created_at).toLocaleDateString()}</span>
+                    <button
+                      onClick={() => navigator.clipboard.writeText(cl.content)}
+                      className="text-xs text-blue-600 hover:underline"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <p className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">{cl.content}</p>
+                </div>
+              ))
+            )}
+          </div>
+        ) : loading ? (
           <div style={{ padding: "40px", textAlign: "center", color: "var(--muted)" }}>
             Loading jobs…
           </div>
@@ -422,10 +484,20 @@ function Dashboard() {
               <div className="th">Actions</div>
             </div>
             {filtered.map((job) => (
-              <div className="table-row" key={job.id}>
+              <div key={job.id}>
+              <div className="table-row">
                 <div className="td">
                   <div className="td-title">{clean(job.title)}</div>
                   <div className="td-sub">{clean(job.location)} · {timeAgo(job.posted_date)}</div>
+                  {job.job_description && (
+                    <button
+                      className="btn btn-ghost"
+                      style={{ fontSize: 11, padding: "2px 8px", marginTop: 4 }}
+                      onClick={() => setExpandedJd(expandedJd === job.id ? null : job.id)}
+                    >
+                      {expandedJd === job.id ? "▲ Hide JD" : "▼ View JD"}
+                    </button>
+                  )}
                 </div>
                 <div className="td">{clean(job.company)}</div>
                 <div className="td">
@@ -476,6 +548,22 @@ function Dashboard() {
                   </button>
                 </div>
               </div>
+              {expandedJd === job.id && job.job_description && (
+                <div style={{
+                  padding: "16px 20px",
+                  borderTop: "1px solid var(--border)",
+                  background: "var(--bg2)",
+                  fontSize: 13,
+                  lineHeight: 1.7,
+                  color: "var(--muted)",
+                  whiteSpace: "pre-wrap",
+                  maxHeight: 300,
+                  overflowY: "auto",
+                }}>
+                  {job.job_description?.replace(/^=+/, "").trim()}
+                </div>
+              )}
+              </div>
             ))}
           </div>
         )}
@@ -512,14 +600,6 @@ function Dashboard() {
             </div>
           </div>
 
-          {!applyModal.job_url && (
-            <div style={{
-              background: "rgba(107,107,126,0.1)", border: "1px solid var(--border)",
-              borderRadius: 10, padding: "12px 16px", marginBottom: 20, fontSize: 13, color: "var(--muted)",
-            }}>
-              ⚠️ No direct link available — search manually on Google or LinkedIn.
-            </div>
-          )}
 
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Quick Apply */}
@@ -529,7 +609,7 @@ function Dashboard() {
             }}>
               <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>⚡ Quick Apply</div>
               <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
-                {applyModal.job_url ? "Opens the application page and marks as applied." : "Marks the job as applied."}
+                {applyModal.job_url ? "Opens the application page and marks as applied." : "Opens a LinkedIn search for this role and marks as applied."}
               </div>
               <button
                 className="btn btn-primary"
@@ -537,7 +617,7 @@ function Dashboard() {
                 onClick={() => doQuickApply(applyModal)}
                 disabled={actionLoading === applyModal.id}
               >
-                {actionLoading === applyModal.id ? "Applying…" : applyModal.job_url ? "Quick Apply →" : "Mark as Applied"}
+                {actionLoading === applyModal.id ? "Applying…" : "Quick Apply →"}
               </button>
             </div>
 
@@ -590,5 +670,6 @@ function Dashboard() {
         ✓ {toast}
       </div>
     )}
+    </>
   );
 }
