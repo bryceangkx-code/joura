@@ -71,8 +71,8 @@ export default function SwipeCard({ job, isTop, onSwipe, onTap }: SwipeCardProps
   return (
     <animated.div
       {...(isTop ? bind() : {})}
-      style={{ x, y, rotate, scale, touchAction: 'none' }}
-      className="absolute inset-0 cursor-grab active:cursor-grabbing select-none"
+      style={{ x, y, rotate, scale, touchAction: 'none', position: 'absolute', top: 0, right: 0, bottom: 0, left: 0, zIndex: 10 }}
+      className="cursor-grab active:cursor-grabbing select-none"
     >
       <div className="w-full h-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
         {/* Swipe hint overlays */}
