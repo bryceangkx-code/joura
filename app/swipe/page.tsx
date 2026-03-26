@@ -84,8 +84,7 @@ export default async function SwipePage({
       <div className="flex-1 min-h-0">
         <SwipeStack
           initialJobs={visibleJobs.reverse()}
-          credits={credits}
-          onCreditsChange={() => {}}
+          initialCredits={credits}
         />
       </div>
     </div>

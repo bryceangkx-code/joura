@@ -6,12 +6,12 @@ import SwipeControls from './SwipeControls'
 
 interface SwipeStackProps {
   initialJobs: Job[]
-  credits: number
-  onCreditsChange: (newCount: number) => void
+  initialCredits: number
 }
 
-export default function SwipeStack({ initialJobs, credits, onCreditsChange }: SwipeStackProps) {
+export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackProps) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs)
+  const [credits, setCredits] = useState<number>(initialCredits)
   const [detailJob, setDetailJob] = useState<Job | null>(null)
   const [toastMsg, setToastMsg] = useState<string | null>(null)
 
@@ -62,14 +62,14 @@ export default function SwipeStack({ initialJobs, credits, onCreditsChange }: Sw
       if (direction === 'right') showToast('Saved! ✓')
       if (direction === 'left') showToast('Skipped')
       if (direction === 'super') {
-        onCreditsChange(credits - 1)
+        setCredits(c => c - 1)
         showToast('Superliked! ★ Generating cover letter...')
         generateCoverLetter(job.id)
       }
     } catch {
       showToast('Something went wrong')
     }
-  }, [jobs, credits, onCreditsChange])
+  }, [jobs, credits])
 
   const handleBuyCredits = async () => {
     const res = await fetch('/api/credits/checkout', {
