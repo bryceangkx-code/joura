@@ -111,14 +111,16 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
           />
         ))}
 
-        {/* Top card (interactive) */}
-        <SwipeCard
-          key={jobs[jobs.length - 1].id}
-          job={jobs[jobs.length - 1]}
-          isTop={true}
-          onSwipe={handleSwipe}
-          onTap={() => setDetailJob(jobs[jobs.length - 1])}
-        />
+        {/* Top card (interactive) — plain div anchors position, animated div handles transforms */}
+        <div className="absolute inset-0">
+          <SwipeCard
+            key={jobs[jobs.length - 1].id}
+            job={jobs[jobs.length - 1]}
+            isTop={true}
+            onSwipe={handleSwipe}
+            onTap={() => setDetailJob(jobs[jobs.length - 1])}
+          />
+        </div>
       </div>
 
       {/* Job counter */}
