@@ -8,7 +8,7 @@ interface SwipeControlsProps {
 
 export default function SwipeControls({ onSwipe, credits, onBuyCredits }: SwipeControlsProps) {
   return (
-    <div className="flex items-center justify-center gap-5 py-6">
+    <div className="flex items-center justify-center gap-5 py-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
       {/* Skip */}
       <button
         onClick={() => onSwipe('left')}

@@ -97,7 +97,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
   return (
     <div className="flex flex-col h-full">
       {/* Card stack */}
-      <div className="relative flex-1 mx-4 mt-4">
+      <div className="relative flex-1 mx-3 mt-2">
         {/* Background cards (visual depth) */}
         {jobs.slice(Math.max(0, jobs.length - 3), jobs.length - 1).map((job, i) => (
           <div
@@ -121,7 +121,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
       </div>
 
       {/* Job counter */}
-      <p className="text-center text-sm text-gray-400 mt-2">{jobs.length} job{jobs.length !== 1 ? 's' : ''} left</p>
+      <p className="text-center text-xs text-gray-400 mt-1">{jobs.length} job{jobs.length !== 1 ? 's' : ''} left</p>
 
       {/* Controls */}
       <SwipeControls onSwipe={handleSwipe} credits={credits} onBuyCredits={handleBuyCredits} />

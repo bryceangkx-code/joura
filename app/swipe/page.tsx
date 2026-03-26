@@ -57,9 +57,9 @@ export default async function SwipePage({
     : (jobs ?? [])
 
   return (
-    <div className="flex flex-col h-screen max-w-md mx-auto bg-gray-50">
+    <div className="flex flex-col h-[100dvh] max-w-md mx-auto bg-gray-50">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-2">
+      <div className="flex items-center justify-between px-5 pb-2" style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}>
         <a href="/dashboard" className="text-gray-500 text-sm">← Dashboard</a>
         <h1 className="text-xl font-bold text-gray-900">Joura</h1>
         <a href="/swipe/credits" className="text-sm font-medium text-yellow-600">
