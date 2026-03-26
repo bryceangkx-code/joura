@@ -41,16 +41,27 @@ export async function POST(
       );
     }
 
-    // Deduct 1 credit
-    const { error: updateError } = await supabase
+    // Deduct 1 credit atomically: only update if credits still matches what we read,
+    // preventing a race condition where two concurrent requests both pass the check above.
+    const { data: updated, error: updateError } = await supabase
       .from("user_profiles")
       .update({ credits: credits - 1 })
-      .eq("clerk_id", userId);
+      .eq("clerk_id", userId)
+      .eq("credits", credits)
+      .select("clerk_id");
 
     if (updateError) {
       return NextResponse.json(
         { error: "Failed to deduct credits" },
         { status: 500 }
+      );
+    }
+
+    if (!updated || updated.length === 0) {
+      // Another concurrent request consumed the credit between our read and write
+      return NextResponse.json(
+        { error: "Not enough credits" },
+        { status: 402 }
       );
     }
   }

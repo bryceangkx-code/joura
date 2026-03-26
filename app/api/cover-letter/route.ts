@@ -68,13 +68,24 @@ Keep it under 300 words. Do not include a header/date/address block. Start with 
   // Call Claude Haiku
   const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const message = await anthropic.messages.create({
-    model: "claude-haiku-4-5-20251001",
-    max_tokens: 1024,
-    messages: [{ role: "user", content: prompt }],
-  });
+  let message;
+  try {
+    message = await anthropic.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 1024,
+      messages: [{ role: "user", content: prompt }],
+    });
+  } catch (aiError) {
+    console.error("[cover-letter] Claude API error:", aiError);
+    return NextResponse.json({ error: "AI generation failed" }, { status: 502 });
+  }
 
-  const content = (message.content[0] as { type: string; text: string }).text;
+  const firstBlock = message.content[0];
+  if (!firstBlock || firstBlock.type !== "text") {
+    console.error("[cover-letter] Unexpected Claude response content:", message.content);
+    return NextResponse.json({ error: "AI returned unexpected response" }, { status: 502 });
+  }
+  const content = firstBlock.text;
 
   // Save to cover_letters
   const { data: saved, error: insertError } = await supabase
