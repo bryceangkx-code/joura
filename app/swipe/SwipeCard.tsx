@@ -74,7 +74,7 @@ export default function SwipeCard({ job, isTop, onSwipe, onTap }: SwipeCardProps
       style={{ x, y, rotate, scale, touchAction: 'none', width: '100%', height: '100%', display: 'block' }}
       className="cursor-grab active:cursor-grabbing select-none"
     >
-      <div className="w-full h-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
+      <div className="relative w-full h-full bg-white rounded-2xl shadow-xl border border-gray-100 p-4 sm:p-6 flex flex-col justify-between overflow-hidden">
         {/* Swipe hint overlays */}
         <animated.div
           style={{ opacity: x.to(v => Math.max(0, v / SWIPE_THRESHOLD)) }}

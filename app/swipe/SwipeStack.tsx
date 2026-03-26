@@ -112,7 +112,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
         ))}
 
         {/* Top card (interactive) — plain div anchors position, animated div handles transforms */}
-        <div className="absolute inset-0">
+        <div className="absolute inset-0" style={{ zIndex: 10 }}>
           <SwipeCard
             key={jobs[jobs.length - 1].id}
             job={jobs[jobs.length - 1]}

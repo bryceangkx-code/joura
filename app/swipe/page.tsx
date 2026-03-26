@@ -81,7 +81,7 @@ export default async function SwipePage({
       )}
 
       {/* Swipe stack fills remaining height */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 h-full">
         <SwipeStack
           initialJobs={visibleJobs.reverse()}
           initialCredits={credits}
