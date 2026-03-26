@@ -83,7 +83,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
 
   if (jobs.length === 0) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center gap-4 text-center px-8">
+      <div className="flex flex-col items-center justify-center h-full gap-4 text-center px-8">
         <span className="text-6xl">🎉</span>
         <h2 className="text-2xl font-bold text-gray-800">You're all caught up!</h2>
         <p className="text-gray-500">New jobs will appear as they're added. Check back soon.</p>
@@ -95,7 +95,7 @@ export default function SwipeStack({ initialJobs, initialCredits }: SwipeStackPr
   }
 
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="h-full flex flex-col overflow-hidden">
       {/* Card stack */}
       <div className="relative flex-1 mx-4 mt-2 mb-3 min-h-0 overflow-hidden rounded-3xl">
         {/* Background cards (visual depth) */}
