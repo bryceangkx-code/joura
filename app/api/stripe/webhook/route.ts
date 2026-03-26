@@ -25,7 +25,32 @@ export async function POST(req: Request) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const clerkId = session.metadata?.clerk_id;
-      if (!clerkId || !session.subscription) break;
+      if (!clerkId) break;
+
+      // Credit top-up: one-time payment with credits metadata
+      if (session.mode === "payment" && session.metadata?.credits) {
+        const creditsToAdd = parseInt(session.metadata.credits);
+        if (!isNaN(creditsToAdd) && creditsToAdd > 0) {
+          const { data: profile } = await supabase
+            .from("user_profiles")
+            .select("credits")
+            .eq("clerk_id", clerkId)
+            .single();
+
+          const currentCredits = (profile?.credits as number) ?? 0;
+
+          await supabase
+            .from("user_profiles")
+            .update({ credits: currentCredits + creditsToAdd, updated_at: new Date().toISOString() })
+            .eq("clerk_id", clerkId);
+
+          console.log(`[stripe] credits top-up ${clerkId} +${creditsToAdd} → ${currentCredits + creditsToAdd}`);
+        }
+        break;
+      }
+
+      // Subscription checkout
+      if (!session.subscription) break;
 
       const subscription = await stripe.subscriptions.retrieve(session.subscription as string);
       const priceId = subscription.items.data[0]?.price.id;
