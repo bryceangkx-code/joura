@@ -4,6 +4,10 @@ import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useUser } from "@clerk/nextjs";
+import ApplicationKit from "./ApplicationKit";
+import PipelineBoard from "./PipelineBoard";
+
+type JobStatus = "new" | "saved" | "applied" | "interviewing" | "offer" | "rejected";
 
 type Job = {
   id: string;
@@ -15,7 +19,7 @@ type Job = {
   job_url: string | null;
   job_description: string | null;
   job_type: string;
-  status: "new" | "saved" | "applied";
+  status: JobStatus;
   posted_date: string;
 };
 
@@ -84,13 +88,14 @@ function Dashboard() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied" | "cover_letters">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "saved" | "applied" | "pipeline" | "cover_letters">("all");
   const [coverLetters, setCoverLetters] = useState<Array<{id: string, content: string, job_id: string, created_at: string}>>([])
   const [coverLettersLoaded, setCoverLettersLoaded] = useState(false)
   const [activeFilter, setActiveFilter] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [jobs, setJobs] = useState<Job[]>([]);
   const [plan, setPlan] = useState<Plan>("free");
+  const [userSkills, setUserSkills] = useState<string[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -98,7 +103,7 @@ function Dashboard() {
   const [scoringId, setScoringId] = useState<string | null>(null);
   const [upgradedBanner, setUpgradedBanner] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [applyModal, setApplyModal] = useState<Job | null>(null);
+  const [kitJob, setKitJob] = useState<Job | null>(null);
   const [hideWeakFit, setHideWeakFit] = useState(false);
   const [expandedJd, setExpandedJd] = useState<string | null>(null);
 
@@ -114,10 +119,15 @@ function Dashboard() {
       router.push("/profile");
       return;
     }
+    if (profileRes.ok) {
+      const p = await profileRes.json();
+      setUserSkills(p.skills ?? []);
+      setPlan(p.plan ?? "free");
+    }
     if (jobsRes.ok) {
       const data = await jobsRes.json();
       setJobs(data.jobs ?? []);
-      setPlan(data.plan ?? "free");
+      if (!plan || plan === "free") setPlan(data.plan ?? "free");
       setTotalCount(data.totalCount ?? 0);
     }
     if (statsRes.ok) setStats(await statsRes.json());
@@ -155,41 +165,19 @@ function Dashboard() {
     setTimeout(() => setToast(null), 3500);
   }
 
-  async function doQuickApply(job: Job) {
-    window.open(applyUrl(job), "_blank", "noopener,noreferrer");
-    setActionLoading(job.id);
-    const res = await fetch(`/api/jobs/${job.id}/apply`, { method: "POST" });
-    if (res.ok) {
-      const { status } = await res.json();
-      setJobs((prev) => prev.map((j) => (j.id === job.id ? { ...j, status } : j)));
-      const statsRes = await fetch("/api/dashboard/stats");
-      if (statsRes.ok) setStats(await statsRes.json());
-      showToast("Good luck! Job marked as applied ✓");
-    }
-    setActionLoading(null);
-    setApplyModal(null);
-  }
-
   function triggerApply(job: Job) {
-    if (plan === "premium") {
-      setApplyModal(job);
-    } else {
-      doQuickApply(job);
-    }
+    setKitJob(job);
   }
 
-  function handleTailorAndApply(job: Job) {
-    if (typeof window !== "undefined") {
-      sessionStorage.setItem("joura_pending_apply", JSON.stringify({
-        id: job.id,
-        title: clean(job.title),
-        company: clean(job.company),
-        apply_url: job.job_url,
-        job_description: job.job_description ?? null,
-      }));
-    }
-    setApplyModal(null);
-    router.push("/resume");
+  function handleJobApplied(jobId: string) {
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: "applied" as JobStatus } : j));
+    fetch("/api/dashboard/stats").then(r => r.json()).then(setStats);
+    showToast("Good luck! Job marked as applied ✓");
+  }
+
+  function handlePipelineStatusChange(jobId: string, status: JobStatus) {
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status } : j));
+    fetch("/api/dashboard/stats").then(r => r.json()).then(setStats);
   }
 
   async function handleAiScore(jobId: string) {
@@ -388,10 +376,16 @@ function Dashboard() {
 
         <div className="tab-bar">
           {([["all", "All Jobs"], ["saved", "Saved"], ["applied", "Applied"]] as const).map(([v, l]) => (
-            <button key={v} className={`tab ${activeTab === v ? "active" : ""}`} onClick={() => setActiveTab(v)}>
+            <button key={v} className={`tab ${activeTab === v ? "active" : ""}`} onClick={() => setActiveTab(v as typeof activeTab)}>
               {l}
             </button>
           ))}
+          <button
+            className={`tab ${activeTab === "pipeline" ? "active" : ""}`}
+            onClick={() => setActiveTab("pipeline")}
+          >
+            📋 Pipeline
+          </button>
           <button
             className={`tab ${activeTab === "cover_letters" ? "active" : ""}`}
             onClick={() => {
@@ -437,7 +431,14 @@ function Dashboard() {
           )}
         </div>
 
-        {activeTab === 'cover_letters' ? (
+        {activeTab === "pipeline" ? (
+          <PipelineBoard
+            jobs={jobs}
+            plan={plan}
+            userSkills={userSkills}
+            onStatusChange={handlePipelineStatusChange}
+          />
+        ) : activeTab === 'cover_letters' ? (
           <div className="space-y-4 mt-4">
             {coverLetters.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
@@ -570,91 +571,15 @@ function Dashboard() {
       </div>
     </div>
 
-    {/* ── Apply modal (premium) ── */}
-    {applyModal && (
-      <div
-        style={{
-          position: "fixed", inset: 0, zIndex: 200,
-          background: "rgba(0,0,0,0.7)", backdropFilter: "blur(4px)",
-          display: "flex", alignItems: "center", justifyContent: "center", padding: 20,
-        }}
-        onClick={() => setApplyModal(null)}
-      >
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            background: "var(--bg2)", border: "1px solid var(--border2)",
-            borderRadius: 16, padding: "32px", maxWidth: 440, width: "100%",
-            boxShadow: "0 24px 64px rgba(0,0,0,0.6)",
-          }}
-        >
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--muted)", marginBottom: 6 }}>
-              Apply to
-            </div>
-            <div style={{ fontSize: 18, fontWeight: 700, fontFamily: "var(--font-outfit)" }}>
-              {clean(applyModal.title)}
-            </div>
-            <div style={{ fontSize: 14, color: "var(--muted)", marginTop: 4 }}>
-              {clean(applyModal.company)}
-            </div>
-          </div>
-
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {/* Quick Apply */}
-            <div style={{
-              background: "var(--bg3)", border: "1px solid var(--border)",
-              borderRadius: 12, padding: "18px 20px",
-            }}>
-              <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>⚡ Quick Apply</div>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
-                {applyModal.job_url ? "Opens the application page and marks as applied." : "Opens a LinkedIn search for this role and marks as applied."}
-              </div>
-              <button
-                className="btn btn-primary"
-                style={{ width: "100%", padding: "10px" }}
-                onClick={() => doQuickApply(applyModal)}
-                disabled={actionLoading === applyModal.id}
-              >
-                {actionLoading === applyModal.id ? "Applying…" : "Quick Apply →"}
-              </button>
-            </div>
-
-            {/* Tailor Resume */}
-            <div style={{
-              background: "var(--bg3)", border: "1px solid var(--border)",
-              borderRadius: 12, padding: "18px 20px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                <div style={{ fontSize: 14, fontWeight: 600 }}>✨ Tailor Resume & Apply</div>
-                <span style={{
-                  fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 100,
-                  background: "rgba(201,168,76,0.12)", color: "var(--gold)", letterSpacing: "0.5px",
-                }}>PREMIUM</span>
-              </div>
-              <div style={{ fontSize: 13, color: "var(--muted)", marginBottom: 14 }}>
-                AI-polish your resume against the job description, then apply.
-              </div>
-              <button
-                className="btn btn-outline"
-                style={{ width: "100%", padding: "10px" }}
-                onClick={() => handleTailorAndApply(applyModal)}
-              >
-                Tailor Resume →
-              </button>
-            </div>
-          </div>
-
-          <button
-            className="btn btn-ghost"
-            style={{ width: "100%", marginTop: 16, fontSize: 13 }}
-            onClick={() => setApplyModal(null)}
-          >
-            Cancel
-          </button>
-        </div>
-      </div>
+    {/* ── Application Kit ── */}
+    {kitJob && (
+      <ApplicationKit
+        job={kitJob}
+        plan={plan}
+        userSkills={userSkills}
+        onClose={() => setKitJob(null)}
+        onApplied={handleJobApplied}
+      />
     )}
 
     {/* ── Toast notification ── */}
